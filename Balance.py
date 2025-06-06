@@ -1,24 +1,32 @@
 class Balance:
     #initialising the instance variables
-    def __init__(self, startBalance=0, currentBalance=0, totalInvestedBalance=0, startDate=None, endDate=None):
-        self.balance = balance
+    def __init__(self, startBalance:float=0, currentBalance:float=0, totalInvestedBalance:float=0, startDate=None, endDate=None):
+        self.balance = startBalance
         self.currentBalance = currentBalance
         self.totalInvestedBalance = totalInvestedBalance
         self.startDate = startDate
         self.endDate = endDate
 
     #getter and setter methods for the instance variables
-    def setStartBalance(self, startBalance):
+    def setStartBalance(self, startBalance:float):
+        if startBalance < 0:
+            raise ValueError("Start balance cannot be negative.")
+        if startBalance == 0:
+            raise ValueError("Start balance cannot be zero.")
         self.startBalance = startBalance
     def getStartBalance(self):
         return self.startBalance
 
-    def setCurrentBalance(self, currentBalance):
+    def setCurrentBalance(self, currentBalance:float):
+        if currentBalance < 0:
+            raise ValueError("Current balance cannot be negative.")
         self.currentBalance = currentBalance
     def getCurrentBalance(self):
         return self.currentBalance
 
-    def setTotalInvestedBalance(self, totalInvestedBalance):
+    def setTotalInvestedBalance(self, totalInvestedBalance:float):
+        if totalInvestedBalance < 0:
+            raise ValueError("Total invested balance cannot be negative.")
         self.totalInvestedBalance = totalInvestedBalance
     def getTotalInvestedBalance(self):
         return self.totalInvestedBalance    
@@ -34,11 +42,11 @@ class Balance:
         return self.endDate 
 
     #purchase method buys stocks and removes the amount from the balance
-    def purchase(Stock, currentBalance, amount):
+    def purchase(self, Stock, amount:int):
         price = Stock.get_CurrentValue()*amount
-        if currentBalance >= price:
-            currentBalance -= price
-            Stock.set_InvestedBalance(Stock.get_InvestedBalance() + price)
+        if self.currentBalance >= price:
+            self.currentBalance -= price
+            self.totalInvestedBalance += price
             Stock.set_NumberStocks(Stock.get_NumberStocks() + amount)
             return True
         else:
@@ -46,11 +54,11 @@ class Balance:
             return False
       
     #sell method sells stocks and adds the profit/loss to the balance
-    def sell(Stock, currentBalance, amount):
+    def sell(self, Stock, amount:int):
         if Stock.get_NumberStocks() >= amount:
             price = Stock.get_CurrentValue() * amount
-            currentBalance += price
-            Stock.set_InvestedBalance(Stock.get_InvestedBalance() - price)
+            self.currentBalance += price
+            self.totalInvestedBalance -= price
             Stock.set_NumberStocks(Stock.get_NumberStocks() - amount)
             return True
         else:
