@@ -34,11 +34,11 @@ class historicalData:
         conn.close()
 
     # Define the date range for fetching historical data using the earliest and latest dates across all tickers
-    def defineDates(tickers):
+    def defineDates(self):
         earliestDates = []
         latestDates = []
 
-        for ticker in tickers:
+        for ticker in self.tickers:
             data = yfinance.download(ticker, period="max")
             earliestDates.append(data.index.min())
             latestDates.append(data.index.max())
@@ -49,15 +49,14 @@ class historicalData:
         self.startDate = startDate
         self.endDate = endDate
 
-
     # Function to download stock data and insert it into the database
-    def downloadData(startDate, endDate, tickers, stocks):  
+    def downloadData(self, startDate, endDate):  
         # Connect to the SQLite database
         conn = sqlite3.connect('historicalData.db')
         cursor = conn.cursor()
 
         #fetch data for each ticker
-        for ticker in tickers:
+        for ticker in self.tickers:
             try:
                 #access yfinance and download the data for a stock (using its ticker)
                 stockData = yfinance.download(ticker, start=startDate, end=endDate)
@@ -77,7 +76,7 @@ class historicalData:
                         (float(row["Low"].iloc[0])),
                         (float(row["Close"].iloc[0])),
                         ticker,
-                        stocks[tickers.index(ticker)]  # Get the corresponding stock name
+                        self.stocks[self.tickers.index(ticker)]  # Get the corresponding stock name
                     ))
                 
                 conn.commit() # Commit the changes to the database
@@ -89,7 +88,7 @@ class historicalData:
         conn.close()
 
     # Function to check if the database is empty or if new data is available, and update accordingly
-    def updateData(startDate, endDate):
+    def updateData(self):
         # Connect to the SQLite database
         conn = sqlite3.connect('historicalData.db')
         cursor = conn.cursor()
@@ -99,28 +98,29 @@ class historicalData:
         count = cursor.fetchone()[0]  # Fetch the count from the result
         if count == 0:
             print("No data found in the database, downloading data...")
-            downloadData(startDate, endDate, self.tickers, self.stocks)
+            self.downloadData(self, self.startDate, self.endDate)
 
         #add data to table if new data is available 
         cursor.execute("SELECT MAX(date) FROM stockDataTable")
         maxDate = cursor.fetchone()[0]  # Fetch the latest date from the result
 
-        if maxDate != str(endDate):
+        if maxDate != str(self.endDate):
             print("New data available, updating database...")
-            downloadData(maxDate, endDate, self.tickers, self.stocks)
+            self.downloadData(self, maxDate, self.endDate)
 
         cursor.close()    
         conn.close()
 
-    def main():
+    # Main function to establish/update the database
+    def main(self):
         # Create the database and table if they don't exist
-        createDatabase()
+        self.createDatabase()
 
         # Define the date range for fetching historical data
-        defineDates(self.tickers)
+        self.defineDates(self.tickers)
 
         # upload data
-        updateData(self.startDate, self.endDate)
+        self.updateData(self.startDate, self.endDate)
 
 
 
