@@ -1,5 +1,7 @@
+import sqlite3
+from datetime import datetime
 class Stock:
-    def __init__(self, name: str, opening_value: float, opening_performance: float = 0.0):
+    def __init__(self, name: str, ticker: str, opening_value: float, opening_performance: float = 0.0):
         self.__name = name        
         self.__invested_balance = 0.0
         self.__opening_value = opening_value
@@ -7,6 +9,7 @@ class Stock:
         self.__opening_performance = opening_performance
         self.__current_performance = opening_performance
         self.__number_stocks = 0
+        self.__ticker = ticker  # New: Store the ticker symbol (e.g., "AAPL")
 
     # Getters
     def get_name(self):
@@ -50,44 +53,6 @@ class Stock:
         else:
             raise ValueError("Number of stocks cannot be negative.")
 
-    # Methods
-    def __update_performance(self):
-        """Recalculate performance based on current vs. opening value."""
-        if self.__opening_value == 0:
-            self.__current_performance = 0.0
-        else:
-            self.__current_performance = (
-                (self.__current_value - self.__opening_value) / self.__opening_value
-            ) * 100.0
-
-    def buy_stocks(self, quantity: int, price: float):
-        """Buy more of this stock."""
-        if quantity <= 0:
-            raise ValueError("Quantity must be positive.")
-        if price <= 0:
-            raise ValueError("Price must be positive.")
-        
-        self.__number_stocks += quantity
-        self.__invested_balance += quantity * price
-
-    def sell_stocks(self, quantity: int, price: float):
-        """Sell this stock."""
-        if quantity <= 0:
-            raise ValueError("Quantity must be positive.")
-        if price <= 0:
-            raise ValueError("Price must be positive.")
-        if quantity > self.__number_stocks:
-            raise ValueError("Cannot sell more stocks than owned.")
-        
-        self.__number_stocks -= quantity
-        self.__invested_balance -= quantity * price
-
-    def reset(self):
-        """Reset"""
-        self.__invested_balance = 0.0
-        self.__current_value = self.__opening_value
-        self.__number_stocks = 0
-        self.__current_performance = self.__opening_performance
 
     def __str__(self):
         return (
@@ -97,3 +62,72 @@ class Stock:
             f"current_value={self.__current_value:.2f}, "
             f"performance={self.__current_performance:.2f}%)"
         )
+     # Database Methods
+    @staticmethod
+    def fetch_historical_data(ticker: str, date: str) -> dict:
+        """Fetch historical data (open, close, etc.) for a given ticker and date."""
+        conn = sqlite3.connect("stocksDB")
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT date, open, close 
+            FROM stockDataTable 
+            WHERE stock_ticker = ? AND date = ?
+        """, (ticker, date))
+        
+        data = cursor.fetchone()
+        conn.close()
+        
+        if not data:
+            raise ValueError(f"No data found for {ticker} on {date}")
+        
+        return {
+            "date": data[0],
+            "open": data[1],
+            "close": data[2]
+        }
+
+    @staticmethod
+    def fetch_all_dates(ticker: str) -> list[str]:
+        """Get all available dates for a stock (for simulation time range)."""
+        conn = sqlite3.connect("stocksDB")
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT date 
+            FROM stockDataTable 
+            WHERE stock_ticker = ? 
+            ORDER BY date
+        """, (ticker,))
+        
+        dates = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return dates
+
+    def update_current_value(self, date: str) -> None:
+        """Update the stock's current value based on historical data for a given date."""
+        data = self.fetch_historical_data(self.__ticker, date)
+        self.__current_value = data["close"]
+        self.__update_performance()
+
+    #simulation helper methods (?)
+    def get_ticker(self) -> str:
+        """Return the stock's ticker symbol (e.g., 'AAPL')."""
+        return self.__ticker
+
+    def get_price_on_date(self, date: str, price_type: str = "close") -> float:
+        """Get the stock's price (open/close/high/low) on a given date."""
+        conn = sqlite3.connect("stocksDB")
+        cursor = conn.cursor()
+        
+        cursor.execute(f"""
+            SELECT {price_type} 
+            FROM stockDataTable 
+            WHERE stock_ticker = ? AND date = ?
+        """, (self.__ticker, date))
+        
+        price = cursor.fetchone()[0]
+        conn.close()
+        return price
+
+    
