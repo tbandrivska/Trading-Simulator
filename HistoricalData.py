@@ -3,7 +3,7 @@ import yfinance
 
 class historicalData:
     
-    def __init__(self, startDate, endDate):
+    def __init__(self, startDate=None, endDate=None):
         self.stocks = ["Apple Inc.", "Alphabet Inc.", "Microsoft Corporation", "Amazon.com Inc.", "Tesla Inc.", 
             "Meta Platforms Inc.", "NVIDIA Corporation","Berkshire Hathaway Inc.", "Visa Inc.", "Johnson & Johnson"]
         self.tickers = ["AAPL", "GOOGL", "MSFT","AMZN", "TSLA", "META", "NVDA", "BRK-B", "V", "JNJ"]
@@ -11,7 +11,7 @@ class historicalData:
         self.endDate = endDate
 
     # Connect to the SQLite database (or create it if it doesn't exist)
-    def createDatabase():
+    def createDatabase(self):
         # Connect to the SQLite database (or create it if it doesn't exist)
         conn = sqlite3.connect('historicalData.db') #databse name is historicalData.db
         cursor = conn.cursor()
@@ -98,7 +98,7 @@ class historicalData:
         count = cursor.fetchone()[0]  # Fetch the count from the result
         if count == 0:
             print("No data found in the database, downloading data...")
-            self.downloadData(self, self.startDate, self.endDate)
+            self.downloadData(self.startDate, self.endDate)
 
         #add data to table if new data is available 
         cursor.execute("SELECT MAX(date) FROM stockDataTable")
@@ -106,7 +106,7 @@ class historicalData:
 
         if maxDate != str(self.endDate):
             print("New data available, updating database...")
-            self.downloadData(self, maxDate, self.endDate)
+            self.downloadData(maxDate, self.endDate)
 
         cursor.close()    
         conn.close()
@@ -117,12 +117,10 @@ class historicalData:
         self.createDatabase()
 
         # Define the date range for fetching historical data
-        self.defineDates(self.tickers)
+        self.defineDates()
 
         # upload data
-        self.updateData(self.startDate, self.endDate)
+        self.updateData()
 
-
-
-
-    
+test:historicalData = historicalData()
+test.main()
