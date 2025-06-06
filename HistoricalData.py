@@ -13,12 +13,12 @@ class historicalData:
     # Connect to the SQLite database (or create it if it doesn't exist)
     def createDatabase(self):
         # Connect to the SQLite database (or create it if it doesn't exist)
-        conn = sqlite3.connect('historicalData.db') #databse name is historicalData.db
+        conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
-        # Create a table in historicalData.dbs for storing stock data
+        # Create a table datasbase for storing historical data
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS stockDataTable (
+            CREATE TABLE IF NOT EXISTS historicalData (
                 date TEXT,
                 open REAL,
                 high REAL,
@@ -49,10 +49,10 @@ class historicalData:
         self.startDate = startDate
         self.endDate = endDate
 
-    # Function to download stock data and insert it into the database
+    # download stock data and insert it into the database
     def downloadData(self, startDate, endDate):  
         # Connect to the SQLite database
-        conn = sqlite3.connect('historicalData.db')
+        conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
         #fetch data for each ticker
@@ -64,9 +64,9 @@ class historicalData:
                 #loop through each date in the stock data
                 for date in stockData.index:
                     row = stockData.loc[date]
-                    #insert data into the 'stocksDB' database
+                    #insert data into the histroicalData table
                     cursor.execute("""
-                        INSERT OR IGNORE INTO stockDataTable (
+                        INSERT OR IGNORE INTO histroicalData (
                             date, open, high, low, close, stock_ticker, stock_name
                         ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, (
@@ -90,18 +90,18 @@ class historicalData:
     # Function to check if the database is empty or if new data is available, and update accordingly
     def updateData(self):
         # Connect to the SQLite database
-        conn = sqlite3.connect('historicalData.db')
+        conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
         #add data to table if table is empty
-        cursor.execute("SELECT COUNT(*) FROM stockDataTable")
+        cursor.execute("SELECT COUNT(*) FROM histroicalData")
         count = cursor.fetchone()[0]  # Fetch the count from the result
         if count == 0:
             print("No data found in the database, downloading data...")
             self.downloadData(self.startDate, self.endDate)
 
         #add data to table if new data is available 
-        cursor.execute("SELECT MAX(date) FROM stockDataTable")
+        cursor.execute("SELECT MAX(date) FROM histroicalData")
         maxDate = cursor.fetchone()[0]  # Fetch the latest date from the result
 
         if maxDate != str(self.endDate):
