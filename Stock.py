@@ -63,29 +63,14 @@ class Stock:
             f"performance={self.__current_performance:.2f}%)"
         )
      # Database Methods
-    @staticmethod
-    def fetch_historical_data(ticker: str, date: str) -> dict:
-        """Fetch historical data (open, close, etc.) for a given ticker and date."""
-        conn = sqlite3.connect("stocksDB")
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT date, open, close 
-            FROM stockDataTable 
-            WHERE stock_ticker = ? AND date = ?
-        """, (ticker, date))
-        
-        data = cursor.fetchone()
-        conn.close()
-        
-        if not data:
-            raise ValueError(f"No data found for {ticker} on {date}")
-        
-        return {
-            "date": data[0],
-            "open": data[1],
-            "close": data[2]
-        }
+def __update_performance(self):
+    """Recalculate performance percentage."""
+    if self.__opening_value == 0:
+        self.__current_performance = 0.0
+    else:
+        self.__current_performance = (
+            (self.__current_value - self.__opening_value) / self.__opening_value
+        ) * 100.0
 
     @staticmethod
     def fetch_all_dates(ticker: str) -> list[str]:
@@ -95,7 +80,7 @@ class Stock:
         
         cursor.execute("""
             SELECT date 
-            FROM stockDataTable 
+            FROM historicalData 
             WHERE stock_ticker = ? 
             ORDER BY date
         """, (ticker,))
@@ -117,7 +102,7 @@ class Stock:
 
     def get_price_on_date(self, date: str, price_type: str = "close") -> float:
         """Get the stock's price (open/close/high/low) on a given date."""
-        conn = sqlite3.connect("stocksDB")
+        conn = sqlite3.connect("historicalDataDB")
         cursor = conn.cursor()
         
         cursor.execute(f"""
