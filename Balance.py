@@ -43,11 +43,11 @@ class Balance:
 
     #purchase method buys stocks and removes the amount from the balance
     def purchase(self, Stock, amount:int):
-        price = Stock.get_CurrentValue()*amount
+        price = Stock.get_current_value()*amount
         if self.currentBalance >= price:
             self.currentBalance -= price
             self.totalInvestedBalance += price
-            Stock.set_NumberStocks(Stock.get_NumberStocks() + amount)
+            Stock.set_number_stocks(Stock.get_number_stocks() + amount)
             return True
         else:
             print("Insufficient balance to purchase stocks.")
@@ -55,11 +55,11 @@ class Balance:
       
     #sell method sells stocks and adds the profit/loss to the balance
     def sell(self, Stock, amount:int):
-        if Stock.get_NumberStocks() >= amount:
-            price = Stock.get_CurrentValue() * amount
+        if Stock.get_number_stocks() >= amount:
+            price = Stock.get_current_value() * amount
             self.currentBalance += price
             self.totalInvestedBalance -= price
-            Stock.set_NumberStocks(Stock.get_NumberStocks() - amount)
+            Stock.set_number_stocks(Stock.get_number_stocks() - amount)
             return True
         else:
             print("Insufficient stocks to sell.")

@@ -9,7 +9,7 @@ class Stock:
         self.__opening_performance = opening_performance
         self.__current_performance = opening_performance
         self.__number_stocks = 0
-        self.__ticker = ticker  # New: Store the ticker symbol (e.g., "AAPL")
+        self.__ticker = ticker  
 
     # Getters
     def get_name(self):
@@ -32,6 +32,8 @@ class Stock:
     
     def get_number_stocks(self):
         return self.__number_stocks
+    def get_ticker(self):
+        return self.__ticker
 
     # I have added setters with input valisation for it to make sense
     def set_invested_balance(self, value: float):
@@ -63,24 +65,25 @@ class Stock:
             f"performance={self.__current_performance:.2f}%)"
         )
      # Database Methods
-def __update_performance(self):
-    """Recalculate performance percentage."""
-    if self.__opening_value == 0:
-        self.__current_performance = 0.0
-    else:
-        self.__current_performance = (
-            (self.__current_value - self.__opening_value) / self.__opening_value
-        ) * 100.0
+    def __update_performance(self):
+        """Recalculate performance percentage."""
+        if self.__opening_value == 0:
+            self.__current_performance = 0.0
+        else:
+            self.__current_performance = (
+                (self.__current_value - self.__opening_value) / self.__opening_value
+            ) * 100.0
 
+   
     @staticmethod
     def fetch_all_dates(ticker: str) -> list[str]:
         """Get all available dates for a stock (for simulation time range)."""
-        conn = sqlite3.connect("stocksDB")
+        conn = sqlite3.connect("historicalData.db")
         cursor = conn.cursor()
         
         cursor.execute("""
             SELECT date 
-            FROM historicalData 
+            FROM stockDataTable 
             WHERE stock_ticker = ? 
             ORDER BY date
         """, (ticker,))
@@ -89,20 +92,40 @@ def __update_performance(self):
         conn.close()
         return dates
 
-    def update_current_value(self, date: str) -> None:
-        """Update the stock's current value based on historical data for a given date."""
+    @staticmethod
+    def fetch_historical_data(ticker: str, date: str) -> dict:
+        import sqlite3
+        conn = sqlite3.connect("historicalData.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT date, open, close 
+            FROM stockDataTable 
+            WHERE stock_ticker = ? AND date = ?
+        """, (ticker, date))
+        data = cursor.fetchone()
+        conn.close()
+        if not data:
+            raise ValueError(f"No data found for {ticker} on {date}")
+        return {
+            "date": data[0],
+            "open": data[1],
+            "close": data[2]
+        }
+    def update_current_value(self,date: str) -> float:
+        """Update the stock's current value based on historical data."""
         data = self.fetch_historical_data(self.__ticker, date)
         self.__current_value = data["close"]
         self.__update_performance()
+        return self.__current_value
 
     #simulation helper methods (?)
+
     def get_ticker(self) -> str:
-        """Return the stock's ticker symbol (e.g., 'AAPL')."""
-        return self.__ticker
+        return self.__ticker  
 
     def get_price_on_date(self, date: str, price_type: str = "close") -> float:
         """Get the stock's price (open/close/high/low) on a given date."""
-        conn = sqlite3.connect("historicalDataDB")
+        conn = sqlite3.connect("historicalData.db")
         cursor = conn.cursor()
         
         cursor.execute(f"""

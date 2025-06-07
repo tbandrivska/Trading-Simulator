@@ -66,7 +66,7 @@ class historicalData:
                     row = stockData.loc[date]
                     #insert data into the histroicalData table
                     cursor.execute("""
-                        INSERT OR IGNORE INTO histroicalData (
+                        INSERT OR IGNORE INTO historicalData (
                             date, open, high, low, close, stock_ticker, stock_name
                         ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, (
@@ -94,14 +94,14 @@ class historicalData:
         cursor = conn.cursor()
 
         #add data to table if table is empty
-        cursor.execute("SELECT COUNT(*) FROM histroicalData")
+        cursor.execute("SELECT COUNT(*) FROM historicalData")
         count = cursor.fetchone()[0]  # Fetch the count from the result
         if count == 0:
             print("No data found in the database, downloading data...")
             self.downloadData(self.startDate, self.endDate)
 
         #add data to table if new data is available 
-        cursor.execute("SELECT MAX(date) FROM histroicalData")
+        cursor.execute("SELECT MAX(date) FROM historicalData")
         maxDate = cursor.fetchone()[0]  # Fetch the latest date from the result
 
         if maxDate != str(self.endDate):

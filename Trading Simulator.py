@@ -40,7 +40,7 @@ class TradingSimulation:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT DISTINCT date 
-                FROM stock_data 
+                FROM stockDataTable
                 WHERE date BETWEEN ? AND ?
                 ORDER BY date
             """, (start_date, end_date))
@@ -117,5 +117,20 @@ class TradingSimulation:
         self.balance.resetBalance()
         self.current_date = None
         self.simulation_dates = []
-
+# Test
+if __name__ == "__main__":
+    # Initialize balance and simulation
+    balance = Balance(startBalance=10_000, currentBalance=10_000)
+    sim = TradingSimulation(balance, db_path="historicalData.db")
+    
+    # Add a stock (ensure Stock.py and Balance.py are in the same directory)
+    apple = Stock("Apple Inc.", "AAPL", opening_value=150.0)
+    sim.add_stock(apple)
+    
+    # Run simulation for a date range
+    sim.run_simulation("2023-01-01", "2023-01-10")
+    
+    # Buy/sell during simulation
+    sim.buy_stock("AAPL", 5)  # Buy 5 shares
+    sim.sell_stock("AAPL", 2)  # Sell 2 shares
 
