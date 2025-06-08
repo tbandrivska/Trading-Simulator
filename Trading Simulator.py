@@ -17,6 +17,12 @@ class TradingSimulation:
         self.current_date = None
         self.simulation_dates: List[str] = []
         self.db_path = db_path
+        self.recurring_dates = [...]  # Pre-calculate dates for recurring buys
+        self.strategies = {
+        'sell_above': 200,
+        'buy_below': 100,
+        'take_profit': 1.2  # For now, a 20% gain threshold cause idk 
+        }
 
     def add_stock(self, stock: Stock) -> None:
         """Add a stock to the simulation."""
@@ -117,6 +123,26 @@ class TradingSimulation:
         self.balance.resetBalance()
         self.current_date = None
         self.simulation_dates = []
+
+    def apply_trading_strategies(self, date: str):
+        """Execute all active trading strategies for the day"""
+        
+        for ticker, stock in self.stocks.items():
+            current_price = stock.get_current_value()
+            
+            #   recuring orders (example: buy 5 shares every 7 days)
+            if date in self.recurring_dates:  
+                self.buy_stock(ticker, amount=5)
+            
+            #  sell if price > X, buy if price < Y
+            if current_price > 200:  # Sell threshold
+                self.sell_stock(ticker, amount=stock.get_number_stocks())
+            elif current_price < 100:  # Buy threshold
+                self.buy_stock(ticker, amount=10)
+            
+            # Sell all if investment gains 20%(for now)
+            if stock.get_current_value() >= 1.2 * stock.get_opening_value():
+                self.sell_stock(ticker, amount=stock.get_number_stocks())
 # Test
 if __name__ == "__main__":
     # Initialize balance and simulation
