@@ -1,7 +1,7 @@
 import sqlite3
 import yfinance
 
-class historicalData:
+class Database:
     
     def __init__(self, startDate=None, endDate=None):
         self.stocks = ["Apple Inc.", "Alphabet Inc.", "Microsoft Corporation", "Amazon.com Inc.", "Tesla Inc.", 
@@ -11,7 +11,8 @@ class historicalData:
         self.endDate = endDate
 
     # Connect to the SQLite database (or create it if it doesn't exist)
-    def createDatabase(self):
+    @staticmethod
+    def createDatabase(self) -> None:
         # Connect to the SQLite database (or create it if it doesn't exist)
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -34,7 +35,7 @@ class historicalData:
         conn.close()
 
     # Define the date range for fetching historical data using the earliest and latest dates across all tickers
-    def defineDates(self):
+    def defineDates(self) -> None:
         earliestDates = []
         latestDates = []
 
@@ -50,7 +51,7 @@ class historicalData:
         self.endDate = endDate
 
     # download stock data and insert it into the database
-    def downloadData(self, startDate, endDate):  
+    def downloadData(self, startDate, endDate) -> None:  
         # Connect to the SQLite database
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -88,7 +89,7 @@ class historicalData:
         conn.close()
 
     # Function to check if the database is empty or if new data is available, and update accordingly
-    def updateData(self):
+    def updateData(self) -> None:
         # Connect to the SQLite database
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -112,9 +113,9 @@ class historicalData:
         conn.close()
 
     # Main function to establish/update the database
-    def main(self):
+    def main(self) -> None:
         # Create the database and table if they don't exist
-        self.createDatabase()
+        Database.createDatabase()
 
         # Define the date range for fetching historical data
         self.defineDates()
@@ -122,5 +123,6 @@ class historicalData:
         # upload data
         self.updateData()
 
-test:historicalData = historicalData()
+    
+test:Database = Database()
 test.main()
