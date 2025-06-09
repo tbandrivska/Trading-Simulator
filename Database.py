@@ -10,6 +10,21 @@ class Database:
         self.startDate = startDate
         self.endDate = endDate
 
+    #getter methods
+    def getStocks(self):
+        return self.stocks
+    def getTickers(self):
+        return self.tickers
+    def getStockName(self, ticker):
+        if ticker in self.tickers:
+            return self.stocks[self.tickers.index(ticker)]
+        else:
+            raise ValueError(f"Ticker {ticker} not found in the list of stocks.")
+    def getStartDate(self):
+        return self.startDate
+    def getEndDate(self):
+        return self.endDate
+
     # Connect to the SQLite database (or create it if it doesn't exist)
     @staticmethod
     def createDatabase(self) -> None:
