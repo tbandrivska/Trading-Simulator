@@ -4,13 +4,13 @@ from Balance import Balance
 from Stock import Stock
 
 class TradingSimulation:
-    def __init__(self, balance: Balance, db_path: str = "historicalData.db"):
+    def __init__(self, balance: Balance, db_path: str = "data.db"):
         """
         Initialize the trading simulation.
         
         Args:
             balance (Balance): User's balance object.
-            db_path (str): Path to the SQLite database. Defaults to "historicalData.db".
+            db_path (str): Path to the SQLite database. Defaults to "data.db".
         """
         self.balance = balance
         self.stocks: Dict[str, Stock] = {}  # Maps tickers to Stock objects

@@ -79,6 +79,32 @@ class Stock:
         return dates
 
     @staticmethod
+    def approximateValue(ticker: str, date: str, openOrClose: str) -> float:
+        """
+        Fetch the opening value for a stock on a given date.
+        If the exact date is not available, it returns the closest previous date's opening value.
+        """
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT open, close 
+            FROM historicalData 
+            WHERE stock_ticker = ? AND date <= ?
+            ORDER BY date DESC
+        """, (ticker, date))
+
+        data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not data:
+            raise ValueError(f"No data found for {ticker} before {date}")
+
+        # Return the requested value based on openOrClose parameter
+        return data[0] if openOrClose.lower() == "open" else data[1]
+        
+    @staticmethod
     def fetchOpeningValue(ticker: str, date: str) -> float:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
@@ -94,7 +120,7 @@ class Stock:
         conn.close()
 
         if not data:
-            raise ValueError(f"No data found for {ticker} on {date}")
+            Stock.approximate_value = Stock.approximateValue(ticker, date, "open")
         return data[0]  # Return the opening value as a float  
     
     @staticmethod
@@ -113,7 +139,7 @@ class Stock:
         conn.close()
 
         if not data:
-            raise ValueError(f"No data found for {ticker} on {date}")
+            Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
         return data[0]  # Return the closing value as a float
     
 
