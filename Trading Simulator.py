@@ -46,7 +46,7 @@ class TradingSimulation:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT DISTINCT date 
-                FROM stockDataTable
+                FROM historicalData
                 WHERE date BETWEEN ? AND ?
                 ORDER BY date
             """, (start_date, end_date))
