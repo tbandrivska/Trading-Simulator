@@ -103,7 +103,7 @@ class Stock:
 
         # Return the requested value based on openOrClose parameter
         return data[0] if openOrClose.lower() == "open" else data[1]
-        
+    
     @staticmethod
     def fetchOpeningValue(ticker: str, date: str) -> float:
         conn = sqlite3.connect("data.db")
@@ -142,6 +142,18 @@ class Stock:
             Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
         return data[0]  # Return the closing value as a float
     
+
+    #initialise the stock with the opening value and performance
+    def initialiseStock(self, date: str) -> None:
+        """Initialise the stock with its opening value and performance on a given date."""
+        self.opening_value = Stock.fetchOpeningValue(self.ticker, date)
+        self.current_value = self.opening_value  # Starts at the same value as an opening one
+        self.opening_performance = 0.0  # Initial performance is set to 0%
+        self.current_performance = self.opening_performance
+        self.invested_balance = 0.0
+        self.number_stocks = 0
+
+
 
     # update the stock variables that change daily: current value, performance and invested balance
     def dailyStockUpdate(self,date: str) -> None:

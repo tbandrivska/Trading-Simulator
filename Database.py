@@ -127,8 +127,8 @@ class Database:
         cursor.close()    
         conn.close()
 
-    # Main function to establish/update the database
-    def main(self) -> None:
+    # Main function to initialize the database and update data
+    def initialiseDatabase(self) -> None:
         # Create the database and table if they don't exist
         Database.createDatabase()
 
@@ -140,4 +140,4 @@ class Database:
 
     
 test:Database = Database()
-test.main()
+test.initialiseDatabase()
