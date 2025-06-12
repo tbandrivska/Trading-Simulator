@@ -18,9 +18,7 @@ class TradingSimulation:
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
         self.start_date = None
-        self.end_date = None
-        
-        self._create_stocks()  
+        self.end_date = None 
 
 
     # 1 initialisation of startdate and stocks
@@ -30,19 +28,22 @@ class TradingSimulation:
         endDate = self.database.getEndDate()
         delta = endDate - startDate
         random_days = timedelta(days=int(delta.days * random.random()))
-        self.start_date = startDate + random_days
+        self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
+        
+        print(f"Random start date set: {self.start_date.strftime('%Y-%m-%d')}")
 
     def _create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
         for ticker in self.database.getTickers():
-            # Get opening price from earliest available date
-            opening_price = Stock.fetchOpeningValue(ticker, self.database.getStartDate())
+            # Get opening price from simulation start date
+            opening_price = Stock.fetchOpeningValue(ticker, self.start_date)
             self.stocks[ticker] = Stock(
-                name=self.database.getStockName(ticker),
-                ticker=ticker,
-                opening_value=opening_price
+                name = self.database.getStockName(ticker),
+                ticker = ticker,
+                opening_value = opening_price
             )
-
+            print("Stock created:" + self.stocks[ticker].get_name())
+            
 
     # 2 cofiguration
     def new_simulation(self, simulation_id: str, days: int) -> None:
@@ -110,8 +111,8 @@ class TradingSimulation:
             stock.initialise_stock(start_value)
         self.balance.resetBalance()
 
-    # 3 simulation setup (purchase stocks and set strategies)
 
+    # 3 simulation setup (purchase stocks and set strategies)
     def trade_each_stock(self) -> None:
         #purchase stocks or set trading strategies for each stock before simulation begins
         trading:bool = True
@@ -139,7 +140,13 @@ class TradingSimulation:
         if ticker not in self.stocks:
             raise ValueError(f"Stock {ticker} not found in portfolio")
         
+        # Get the stock object from the dictionary
         stock = self.stocks[ticker]
+
+        # Check if the stock has been initialized
+        if stock.get_current_value() is None:
+            raise ValueError(f"Stock {ticker} has not been initialized with a current value")
+
         if amount > 0:
             # Buy stocks
             purchase:bool = self.balance.purchase(stock, amount)

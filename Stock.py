@@ -59,12 +59,12 @@ class Stock:
         else:
             raise ValueError("Number of stocks cannot be negative.")
    
-    def initialise_stock(self, current_value: float = 0.0) -> None:
-        """Initializes the stock with a current value, setting other attributes to their defaults."""
+    def initialise_stock(self, opening_value:float) -> None:
+        """Reset the stock instance variables and set opening and current value."""
         self.invested_balance = 0.0
-        self.opening_value = 0.0
-        self.current_value = current_value  
-        self.opening_performance = current_value
+        self.opening_value = opening_value
+        self.current_value = open
+        self.opening_performance = 0.0
         self.current_performance = 0.0
         self.number_stocks = 0
 
@@ -151,7 +151,6 @@ class Stock:
         if not data:
             Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
         return data[0]  # Return the closing value as a float
-
 
     # update the stock variables that change daily: current value, performance and invested balance
     def dailyStockUpdate(self,date: str) -> None:
