@@ -135,28 +135,31 @@ class Stock:
     
     @staticmethod
     def fetchClosingValue(ticker: str, date: str) -> float:
-        conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
+       conn = sqlite3.connect("data.db")
+       cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT close
-            FROM historicalData 
-            WHERE stock_ticker = ? AND date = ?
+       cursor.execute("""
+          SELECT close
+          FROM historicalData 
+          WHERE stock_ticker = ? AND date = ?
         """, (ticker, date))
-
-        data = cursor.fetchone()
-        cursor.close()
-        conn.close()
+       
+       data = cursor.fetchone()
+       cursor.close()
+       conn.close()
 
         if not data:
             Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
+            return Stock.approximateValue(ticker, date, "close")
+       
         return data[0]  # Return the closing value as a float
+
 
     # update the stock variables that change daily: current value, performance and invested balance
     def dailyStockUpdate(self,date: str) -> None:
         #update the current value of the stock based on the date
-        currentValue: float = Stock.fetchClosingValue(self.ticker, date)
-        self.set_current_value(currentValue)
+        current_value: float = Stock.fetchClosingValue(self.ticker, date)
+        self.set_current_value(current_value)
     
         #update the performance of the stock
         if self.opening_value == 0:
@@ -167,7 +170,7 @@ class Stock:
             ) * 100.0
 
         # update the invested balance based on the number of stocks and current value
-        invested_balance: float = self.get_number_stocks * currentValue
+        invested_balance: float = self.get_number_stocks * current_value
         self.set_invested_balance = invested_balance
 
 
