@@ -163,6 +163,7 @@ class TradingSimulation:
         else:
             return False
 
+
     # 4 simulation Execution
     def run_simulation(self) -> None:
         """Main simulation loop"""
