@@ -42,7 +42,9 @@ class TradingSimulation:
                 ticker = ticker,
                 opening_value = opening_price
             )
+
             print("Stock created:" + self.stocks[ticker].get_name())
+
             
 
     # 2 cofiguration
@@ -123,7 +125,7 @@ class TradingSimulation:
                 if user_input == "yes":
                     print("How many shares would you like to buy or sell? (positive to buy, negative to sell)")
                     try:
-                        amount = int(input().strip())
+                        amount = int(input()) # Convert string input to integer (add input validation later)
                         if self.trade_stock(ticker, amount):
                             trading = False
                     except ValueError:
@@ -293,16 +295,25 @@ class TradingSimulation:
         # 1 initialisation of startdate and stocks
         self.randomiseStartDate()
         self._create_stocks()
+        print("phase 1 complete: Stocks created and start date set.")
         # 2 cofiguration
         self.new_simulation("test_simulation", days=30)
+        print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # 3 simulation setup (purchase stocks and set strategies)
         self.trade_each_stock()
+        print("phase 3 complete: Stocks traded and strategies set.")
         # 4 simulation Execution
         self.run_simulation()
+        print("phase 4 complete: Simulation executed.")
         # 5 simulation termination
         self.end_simulation(new_simulation=False)
+        print("phase 5 complete: Simulation ended and performance plotted.")
 
 if __name__ == "__main__":
     simulation = TradingSimulation(start_balance=10000)
     simulation.testRun()
+
+#things to do:
+# - Add more trading strategies and allow user to select them
+# - add input validation for user inputs (phase 3 functions)
              

@@ -43,7 +43,7 @@ class Balance:
 
     #purchase method buys stocks and removes the amount from the balance
     def purchase(self, Stock, amount:int):
-        price = Stock.get_current_value()*amount
+        price = Stock.get_current_value() * amount
         if self.currentBalance >= price:
             self.currentBalance -= price
             self.totalInvestedBalance += price

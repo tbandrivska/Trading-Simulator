@@ -135,23 +135,23 @@ class Stock:
     
     @staticmethod
     def fetchClosingValue(ticker: str, date: str) -> float:
-       conn = sqlite3.connect("data.db")
-       cursor = conn.cursor()
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
 
-       cursor.execute("""
-          SELECT close
-          FROM historicalData 
-          WHERE stock_ticker = ? AND date = ?
-        """, (ticker, date))
-       
-       data = cursor.fetchone()
-       cursor.close()
-       conn.close()
+        cursor.execute("""
+            SELECT close
+            FROM historicalData 
+            WHERE stock_ticker = ? AND date = ?
+            """, (ticker, date))
+        
+        data = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
         if not data:
             Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
             return Stock.approximateValue(ticker, date, "close")
-       
+        
         return data[0]  # Return the closing value as a float
 
 
