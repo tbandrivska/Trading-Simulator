@@ -2,11 +2,11 @@ import sqlite3
 from typing import Dict, List
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+import random
 
-import Balance
-import Database
-import Stock
 from Stock import Stock
+from Balance import Balance
+from Database import Database
 
 class TradingSimulation:
     def __init__(self, start_balance: float = 10000):
@@ -23,7 +23,14 @@ class TradingSimulation:
         self._create_stocks()  
 
 
-    # 1 initialisation of stocks
+    # 1 initialisation of startdate and stocks
+    def randomiseStartDate(self) -> None:
+        """Set a random start date within the available historical data"""
+        startDate = self.database.getStartDate()
+        endDate = self.database.getEndDate()
+        delta = endDate - startDate
+        random_days = timedelta(days=int(delta.days * random.random()))
+        self.start_date = startDate + random_days
 
     def _create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
@@ -36,11 +43,12 @@ class TradingSimulation:
                 opening_value=opening_price
             )
 
- 
-    # 2 setup
-    def new_simulation(self, simulation_id: str) -> None:
+
+    # 2 cofiguration
+    def new_simulation(self, simulation_id: str, days: int) -> None:
         """Reset everything for a new simulation"""
         self.current_simulation_id = simulation_id
+        self.set_timeframe(days) 
         self._create_simulation_table()
         self._reset_all()
 
@@ -54,31 +62,31 @@ class TradingSimulation:
                 date TEXT,
                 start_balance REAL,
                 end_balance REAL,
+                ticker TEXT,
                 start_invested REAL,
                 end_invested REAL,
-                ticker TEXT,
                 start_shares INTEGER,
                 end_shares INTEGER,
                 start_stock_value REAL,
                 end_stock_value REAL,
                 PRIMARY KEY (date, ticker)
+            )
         """)
         conn.commit()
-        conn.close()
+        conn.close()  
 
-    def _reset_all(self) -> None:
-        """Reset stocks and balance to initial state"""
-        for stock in self.stocks.values():
-            stock.initialiseStock(self.database.getStartDate())
-        self.balance.resetBalance()
-
-    # 3 coonfiguration
-    def set_timeframe(self, start_date: str, end_date: str) -> None:
-        """Set simulation date range (YYYY-MM-DD)"""
-        if not self._validate_dates(start_date, end_date):
+    def set_timeframe(self, days: int) -> None:
+        """Set simulation date range from start date"""
+        if not self.start_date:
+            raise ValueError("Start date not set")
+        
+        #need to change this so it loops instead of erroring if the date range is invalid
+        end_date = self.start_date + timedelta(days=days)
+        if not self._validate_dates(self.start_date, end_date):
             raise ValueError("Invalid date range")
-        self.start_date = start_date
-        self.end_date = end_date
+        
+        self.end_date = end_date.strftime("%Y-%m-%d")
+        print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
 
     def _validate_dates(self, start: str, end: str) -> bool:
         """Check if dates exist in database"""
@@ -95,40 +103,97 @@ class TradingSimulation:
         conn.close()
         return bool(exists)
     
+    def _reset_all(self) -> None:
+        """Reset stocks and balance to initial state"""
+        for stock in self.stocks.values():
+            start_value:float = Stock.fetchOpeningValue(stock.get_ticker(), self.start_date)
+            stock.initialise_stock(start_value)
+        self.balance.resetBalance()
+
+    # 3 simulation setup (purchase stocks and set strategies)
+
+    def trade_each_stock(self) -> None:
+        #purchase stocks or set trading strategies for each stock before simulation begins
+        trading:bool = True
+        for ticker in self.database.getTickers():
+            while trading:
+                print("Would you like to purchase or sell " + self.database.getStockName(ticker) + "?(yes/no)")
+                user_input = input().strip().lower()
+                if user_input == "yes":
+                    print("How many shares would you like to buy or sell? (positive to buy, negative to sell)")
+                    try:
+                        amount = int(input().strip())
+                        if self.trade_stock(ticker, amount):
+                            trading = False
+                    except ValueError:
+                        print("Invalid input. Please enter a valid number.")
+                elif user_input == "no":
+                    trading = False
+                else:
+                    print("Invalid input. Please enter 'yes' or 'no'.")
+                      
+        #insert another loop here to apply strategies to each stock  
+
+    def trade_stock(self, ticker: str, amount: int) -> bool:
+        """Buy or sell stocks based on current balance"""
+        if ticker not in self.stocks:
+            raise ValueError(f"Stock {ticker} not found in portfolio")
+        
+        stock = self.stocks[ticker]
+        if amount > 0:
+            # Buy stocks
+            purchase:bool = self.balance.purchase(stock, amount)
+            if purchase:
+                print(f"Purchased {amount} shares of {ticker}")
+            return purchase
+           
+        elif amount < 0:
+            # Sell stocks
+            sell:bool = self.balance.sell(stock, -amount)
+            if sell:
+                print(f"Sold {-amount} shares of {ticker}")
+            return sell
+        else:
+            return False
+
     # 4 simulation Execution
     def run_simulation(self) -> None:
         """Main simulation loop"""
         if not self.start_date or not self.end_date:
             raise ValueError("Timeframe not set")
         
+        self.trade_each_stock()  # Allow user to trade before simulation starts
+
         dates = self._get_simulation_dates()
         
         for date in dates:
             self._run_daily_cycle(date)
 
     def _get_simulation_dates(self) -> List[str]:
-        """Get all trading days in timeframe"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT DISTINCT date FROM historicalData
-            WHERE date BETWEEN ? AND ?
-            ORDER BY date
-        """, (self.start_date, self.end_date))
-        dates = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        return dates
+        """Get all dates between start and end date"""
+        start = datetime.strptime(self.start_date, "%Y-%m-%d")
+        end = datetime.strptime(self.end_date, "%Y-%m-%d")
+        delta = end - start
+        
+        listOfDays = []
+        for i in range(delta.days + 1):
+            day = start + timedelta(days=i)
+            listOfDays.append(day.strftime("%Y-%m-%d"))
+        return listOfDays
+    
+        #I Changed this funxtion so it returns all the dates in the range because the databse skips weekends and holidays
+            # BUT if we want to create a graph that shows the performance of the portfolio over time, 
+                # we need to have all the dates in the range, even if there is no data for that date.
+                    #but its fine because i made an approximation function to fill in the gaps of missing dates in the graph
 
     def _run_daily_cycle(self, date: str) -> None:
         """Process one day of trading"""
-        #  records
-        start_values = self._record_portfolio_state(date, "start")
-        
-    
+        #records values at the start of the day (before trading)
+        self._record_portfolio_state(date, "start")            
+                
         for stock in self.stocks.values():
             stock.dailyStockUpdate(date)
             self._apply_strategies(stock, date)
-        
 
         self._record_portfolio_state(date, "end")
         
@@ -160,7 +225,7 @@ class TradingSimulation:
             ))
         
         conn.commit()
-        conn.close()
+        conn.close()  
 
     def _apply_strategies(self, stock: Stock, date: str) -> None:
         """Execute all active trading strategies"""
@@ -175,8 +240,9 @@ class TradingSimulation:
             total += stock.get_current_value() * stock.get_number_stocks()
         return total
 
-    #  5 simulation trrmination
-    def end_simulation(self, new_simulation: bool = False) -> None:
+
+    #  5 simulation termination
+    def end_simulation(self, new_simulation: bool) -> None:
         """Clean up and optionally start new simulation"""
         if new_simulation:
             new_id = f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -211,3 +277,24 @@ class TradingSimulation:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
+
+
+    #test method to run the simulation
+    def testRun(self):
+        """Run a test simulation with random parameters"""
+        # 1 initialisation of startdate and stocks
+        self.randomiseStartDate()
+        self._create_stocks()
+        # 2 cofiguration
+        self.new_simulation("test_simulation", days=30)
+        # 3 simulation setup (purchase stocks and set strategies)
+        self.trade_each_stock()
+        # 4 simulation Execution
+        self.run_simulation()
+        # 5 simulation termination
+        self.end_simulation(new_simulation=False)
+
+if __name__ == "__main__":
+    simulation = TradingSimulation(start_balance=10000)
+    simulation.testRun()
+             

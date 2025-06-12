@@ -26,7 +26,6 @@ class Database:
         return self.endDate
 
     # Connect to the SQLite database (or create it if it doesn't exist)
-    @staticmethod
     def createDatabase(self) -> None:
         # Connect to the SQLite database (or create it if it doesn't exist)
         conn = sqlite3.connect('data.db')
@@ -130,7 +129,7 @@ class Database:
     # Main function to initialize the database and update data
     def initialiseDatabase(self) -> None:
         # Create the database and table if they don't exist
-        Database.createDatabase()
+        self.createDatabase()
 
         # Define the date range for fetching historical data
         self.defineDates()

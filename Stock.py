@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+
 class Stock:
     def __init__(self, name: str, ticker: str, opening_value: float, opening_performance: float = 0.0):
         self.name = name 
@@ -57,6 +58,15 @@ class Stock:
             self.number_stocks = quantity
         else:
             raise ValueError("Number of stocks cannot be negative.")
+   
+    def initialise_stock(self, current_value: float = 0.0) -> None:
+        """Initializes the stock with a current value, setting other attributes to their defaults."""
+        self.invested_balance = 0.0
+        self.opening_value = 0.0
+        self.current_value = current_value  
+        self.opening_performance = current_value
+        self.current_performance = 0.0
+        self.number_stocks = 0
 
 
     #methods for fetching historical data from the database
@@ -121,7 +131,7 @@ class Stock:
 
         if not data:
             Stock.approximate_value = Stock.approximateValue(ticker, date, "open")
-        return data[0]  # Return the opening value as a float  
+        return data
     
     @staticmethod
     def fetchClosingValue(ticker: str, date: str) -> float:
@@ -141,18 +151,6 @@ class Stock:
         if not data:
             Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
         return data[0]  # Return the closing value as a float
-    
-
-    #initialise the stock with the opening value and performance
-    def initialiseStock(self, date: str) -> None:
-        """Initialise the stock with its opening value and performance on a given date."""
-        self.opening_value = Stock.fetchOpeningValue(self.ticker, date)
-        self.current_value = self.opening_value  # Starts at the same value as an opening one
-        self.opening_performance = 0.0  # Initial performance is set to 0%
-        self.current_performance = self.opening_performance
-        self.invested_balance = 0.0
-        self.number_stocks = 0
-
 
 
     # update the stock variables that change daily: current value, performance and invested balance
