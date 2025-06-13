@@ -318,4 +318,6 @@ if __name__ == "__main__":
 #things to do:
 # - Add more trading strategies and allow user to select them
 # - add input validation for user inputs (phase 3 functions)
+# - create function that sets up the opening_performance of a stock before the simulation starts
+    #maybe have it compare the stock value on the simulation start date and the day before (?)
              

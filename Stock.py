@@ -9,7 +9,7 @@ class Stock:
         self.opening_value = opening_value
         self.current_value = opening_value  # Starts at the same value as an opening one
         self.opening_performance = opening_performance
-        self.current_performance = opening_performance
+        self.current_performance = self.update_performance()
         self.number_stocks = 0
         
 
@@ -50,7 +50,7 @@ class Stock:
     def set_current_value(self, value: float):
         if value >= 0:
             self.current_value = value
-            self.__update_performance()  # Recalculate performance when value changes
+            self.update_performance()  # Recalculate performance when value changes
         else:
             raise ValueError("Stock value cannot be negative.")
     def set_number_stocks(self, quantity: int):
@@ -63,11 +63,18 @@ class Stock:
         """Reset the stock instance variables and set opening and current value."""
         self.invested_balance = 0.0
         self.opening_value = opening_value
-        self.current_value = open
+        self.current_value = opening_value
         self.opening_performance = 0.0
         self.current_performance = 0.0
         self.number_stocks = 0
 
+    def update_performance(self):
+        '''calculate current performance based on opening value and current value'''
+        opening = self.get_opening_value()
+        current = self.get_current_value()
+        if opening == 0:
+            return 0.0
+        return (current - opening) / opening
 
     #methods for fetching historical data from the database
     @staticmethod
@@ -170,8 +177,8 @@ class Stock:
             ) * 100.0
 
         # update the invested balance based on the number of stocks and current value
-        invested_balance: float = self.get_number_stocks * current_value
-        self.set_invested_balance = invested_balance
+        invested_balance: float = self.get_number_stocks() * current_value
+        self.set_invested_balance(invested_balance)
 
 
 
