@@ -17,15 +17,17 @@ class TradingSimulation:
         self.balance = Balance(startBalance=start_balance, currentBalance=start_balance)
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
-        self.start_date = None
-        self.end_date = None 
+
+        #default start and end dates match the database dates
+        self.start_date = self.database.getStartDate()
+        self.end_date = self.database.getEndDate() 
 
 
     # 1 initialisation of startdate and stocks
     def randomiseStartDate(self) -> None:
         """Set a random start date within the available historical data"""
         startDate = self.database.getStartDate()
-        endDate = self.database.getEndDate()
+        endDate: = self.database.getEndDate()
         delta = endDate - startDate
         random_days = timedelta(days=int(delta.days * random.random()))
         self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data

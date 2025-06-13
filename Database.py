@@ -1,4 +1,5 @@
 import sqlite3
+import pandas as pd
 import yfinance
 
 class Database:
@@ -55,6 +56,9 @@ class Database:
 
         for ticker in self.tickers:
             data = yfinance.download(ticker, period="max")
+            # Check if data is None or empty
+            if data is None or data.empty:
+                raise ValueError(f"No data found for ticker {ticker}.")
             earliestDates.append(data.index.min())
             latestDates.append(data.index.max())
 
@@ -75,9 +79,13 @@ class Database:
             try:
                 #access yfinance and download the data for a stock (using its ticker)
                 stockData = yfinance.download(ticker, start=startDate, end=endDate)
-                
+                # Check if the data is empty
+                if stockData is None or len(stockData) == 0:
+                    raise ValueError(f"No data found for ticker {ticker} in the specified date range.")
+
                 #loop through each date in the stock data
                 for date in stockData.index:
+                    
                     row = stockData.loc[date]
                     #insert data into the histroicalData table
                     cursor.execute("""
@@ -93,13 +101,12 @@ class Database:
                         ticker,
                         self.stocks[self.tickers.index(ticker)]  # Get the corresponding stock name
                     ))
-                
                 conn.commit() # Commit the changes to the database
+                print(f"Data for {ticker} from {startDate} to {endDate} inserted successfully.")
 
             except Exception as e:
                 print(f"Error downloading or inserting data for {ticker}: {e}")
 
-        cursor.close()    
         conn.close()
 
     # Function to check if the database is empty or if new data is available, and update accordingly
