@@ -3,7 +3,7 @@ from typing import Dict, List
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import random
-
+from datetime import datetime
 from Stock import Stock
 from Balance import Balance
 from Database import Database
@@ -183,10 +183,18 @@ class TradingSimulation:
 
     def _get_simulation_dates(self) -> List[str]:
         """Get all dates between start and end date"""
-        start = self.start_date
-        end = self.end_date
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT start_date, end_date FROM simulations WHERE id = ?", (self.current_simulation_id,))
+        start, end = cursor.fetchone()
+        conn.close()
+
+        if isinstance(start, str):
+            start = datetime.strptime(start, "%Y-%m-%d").date()
+        if isinstance(end, str):
+            end = datetime.strptime(end, "%Y-%m-%d").date()
+
         delta = end - start
-        
         listOfDays = []
         for i in range(delta.days + 1):
             day = start + timedelta(days=i)
@@ -194,7 +202,7 @@ class TradingSimulation:
         return listOfDays
     
         #I Changed this funxtion so it returns all the dates in the range because the databse skips weekends and holidays
-        # Doesnt the Wall street not work over the weekend and on holidays? So like the stock values don't change on those days?? It's stil fine ig ngl
+        # Doesnt the Wall street not work over the weekend and on holidays? So like the stock values don't change on those days?? It's stil fine ig nglno
             # BUT if we want to create a graph that shows the performance of the portfolio over time, 
                 # we need to have all the dates in the range, even if there is no data for that date.
                     #but its fine because i made an approximation function to fill in the gaps of missing dates in the graph
