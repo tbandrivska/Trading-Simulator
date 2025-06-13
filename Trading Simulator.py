@@ -27,7 +27,7 @@ class TradingSimulation:
     def randomiseStartDate(self) -> None:
         """Set a random start date within the available historical data"""
         startDate = self.database.getStartDate()
-        endDate: = self.database.getEndDate()
+        endDate = self.database.getEndDate()
         delta = endDate - startDate
         random_days = timedelta(days=int(delta.days * random.random()))
         self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
@@ -183,8 +183,8 @@ class TradingSimulation:
 
     def _get_simulation_dates(self) -> List[str]:
         """Get all dates between start and end date"""
-        start = datetime.strptime(self.start_date, "%Y-%m-%d")
-        end = datetime.strptime(self.end_date, "%Y-%m-%d")
+        start = self.start_date
+        end = self.end_date
         delta = end - start
         
         listOfDays = []
@@ -243,7 +243,7 @@ class TradingSimulation:
         """Execute all active trading strategies"""
         # (Example!!!!) Sell if stock gains 20%
         if stock.get_current_value() >= 1.2 * stock.get_opening_value():
-            self.sell_stock(stock.get_ticker(), stock.get_number_stocks())
+            self.balance.sell(stock.get_ticker(), stock.get_number_stocks())
 
     def _get_total_value(self) -> float:
         """Calculate total portfolio value (cash + investments)"""
@@ -254,11 +254,15 @@ class TradingSimulation:
 
 
     #  5 simulation termination
-    def end_simulation(self, new_simulation: bool) -> None:
+    def end_simulation(self, new_simulation: bool, days: int) -> None:
         """Clean up and optionally start new simulation"""
+        if new_simulation & days <= 0:
+            print("Simulation must be 1 day or longer")
+            return
+            #add better exception handling here
         if new_simulation:
             new_id = f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            self.new_simulation(new_id)
+            self.new_simulation(new_id, days)
         else:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
@@ -308,7 +312,7 @@ class TradingSimulation:
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
         # 5 simulation termination
-        self.end_simulation(new_simulation=False)
+        self.end_simulation(new_simulation=False, days = 0)
         print("phase 5 complete: Simulation ended and performance plotted.")
 
 if __name__ == "__main__":
@@ -320,4 +324,5 @@ if __name__ == "__main__":
 # - add input validation for user inputs (phase 3 functions)
 # - create function that sets up the opening_performance of a stock before the simulation starts
     #maybe have it compare the stock value on the simulation start date and the day before (?)
+# - add better exception handling to end_simulation function
              
