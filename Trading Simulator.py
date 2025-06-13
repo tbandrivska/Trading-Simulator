@@ -194,6 +194,7 @@ class TradingSimulation:
         return listOfDays
     
         #I Changed this funxtion so it returns all the dates in the range because the databse skips weekends and holidays
+        # Doesnt the Wall street not work over the weekend and on holidays? So like the stock values don't change on those days?? It's stil fine ig ngl
             # BUT if we want to create a graph that shows the performance of the portfolio over time, 
                 # we need to have all the dates in the range, even if there is no data for that date.
                     #but its fine because i made an approximation function to fill in the gaps of missing dates in the graph

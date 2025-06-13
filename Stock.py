@@ -125,42 +125,33 @@ class Stock:
     def fetchOpeningValue(ticker: str, date: str) -> float:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT open
             FROM historicalData 
             WHERE stock_ticker = ? AND date = ?
         """, (ticker, date))
-
         data = cursor.fetchone()
         cursor.close()
         conn.close()
-
         if not data:
-            Stock.approximate_value = Stock.approximateValue(ticker, date, "open")
-        return data
+            return Stock.approximateValue(ticker, date, "open")
+        return data[0]
     
     @staticmethod
     def fetchClosingValue(ticker: str, date: str) -> float:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT close
             FROM historicalData 
             WHERE stock_ticker = ? AND date = ?
-            """, (ticker, date))
-        
+        """, (ticker, date))
         data = cursor.fetchone()
         cursor.close()
         conn.close()
-
         if not data:
-            Stock.approximate_value = Stock.approximateValue(ticker, date, "close")
             return Stock.approximateValue(ticker, date, "close")
-        
-        return data[0]  # Return the closing value as a float
-
+        return data[0]
 
     # update the stock variables that change daily: current value, performance and invested balance
     def dailyStockUpdate(self,date: str) -> None:
@@ -187,19 +178,16 @@ class Stock:
     #  I really believe we do, as it allows to get the price on a specific date, so we should include it for the simulation,
     # I am gonna add it back, but commented out for now, while we rethink it, just in case
 
-    def get_price_on_date(self, date: str, price_type: str = "close") -> float:
-         """Get the stock's price (open/close/high/low) on a given date."""
-         conn = sqlite3.connect("data.db")
-         cursor = conn.cursor()
-        
-         cursor.execute(f"""
-          SELECT {price_type} 
-           FROM historicalData 
-         WHERE stock_ticker = ? AND date = ?
-         """, (self.ticker, date))
-        
-         price = cursor.fetchone()[0]
-         conn.close()
-         return price
-
-    
+   # def get_price_on_date(self, date: str, price_type: str = "close") -> float:
+     #   conn = sqlite3.connect("data.db")
+      #  cursor = conn.cursor()
+       # cursor.execute(f"""
+        #    SELECT {price_type}
+        #    FROM historicalData
+        #    WHERE stock_ticker = ? AND date = ?
+        #""", (self.ticker, date))
+        #data = cursor.fetchone()
+        #conn.close()
+        #if not data:
+       #     return Stock.approximateValue(self.ticker, date, price_type)
+       #return data[0]
