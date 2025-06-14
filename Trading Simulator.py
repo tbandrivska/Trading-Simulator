@@ -48,7 +48,7 @@ class TradingSimulation:
         self.balance = Balance(startBalance=start_balance, currentBalance=start_balance)
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
-
+        self.active_strategies: Dict[str, dict] = {} 
         #default start and end dates match the database dates
         self.start_date = self.database.getStartDate()
         self.end_date = self.database.getEndDate() 
@@ -78,7 +78,17 @@ class TradingSimulation:
 
             print("Stock created:" + self.stocks[ticker].get_name())
 
-            
+    def _get_previous_trading_day(self, date: str) -> str:
+        """Find the most recent trading day before given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MAX(date) FROM historicalData 
+            WHERE date < ?
+        """, (date,))
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result if result else date  # Fallback to same date if no previous found
 
     # 2 cofiguration
     def new_simulation(self, simulation_id: str, days: int) -> None:
@@ -110,6 +120,39 @@ class TradingSimulation:
         """)
         conn.commit()
         conn.close()  
+
+    def setup_opening_performance(self):
+        """
+        Calculate and store the opening performance for each stock before the simulation starts.
+        Compares the stock value on the simulation start date with the previous day.
+        """
+        for stock in self.stocks:
+            start_date = self.simulation_start
+            prev_date = start_date - timedelta(days=1)
+            current_price = stock.get_price(start_date)
+            previous_price = stock.get_price(prev_date)
+            if current_price and previous_price:
+                opening_performance = (current_price - previous_price) / previous_price
+                stock.opening_performance = opening_performance
+            else:
+                stock.opening_performance = None
+    def get_user_strategy_choice(self):
+        """
+        Allow user to select a trading strategy from available options.
+        """
+        strategies = ['take_profit', 'stop_loss', 'dollar_cost_avg']  # Example strategies
+        print("Available strategies:")
+        for i, strat in enumerate(strategies, 1):
+            print(f"{i}: {strat}")
+        while True:
+            try:
+                choice = int(input("Select a strategy by number: "))
+                if 1 <= choice <= len(strategies):
+                    return strategies[choice - 1]
+                else:
+                    print("Invalid selection. Try again.")
+            except ValueError:
+                print("Please enter a valid number.")
 
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
