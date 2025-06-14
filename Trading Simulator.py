@@ -153,7 +153,24 @@ class TradingSimulation:
                     print("Invalid selection. Try again.")
             except ValueError:
                 print("Please enter a valid number.")
-
+    def add_strategy(self, strategy_name: str, **params) -> None:
+        """Add a trading strategy with custom parameters"""
+        if strategy_name not in self.STRATEGIES:
+            raise ValueError(f"Invalid strategy. Available: {list(self.STRATEGIES.keys())}")
+        
+        # Validate parameters
+        valid_params = self.STRATEGIES[strategy_name]['params']
+        for param, value in params.items():
+            if param not in valid_params:
+                raise ValueError(f"Invalid parameter '{param}' for strategy '{strategy_name}'")
+            if isinstance(valid_params[param], float) and not 0 <= value <= 1:
+                raise ValueError(f"Parameter '{param}' must be between 0 and 1")
+        
+        self.active_strategies[strategy_name] = {
+            **self.STRATEGIES[strategy_name]['params'],
+            **params
+        }
+        
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
         if not self.start_date:
