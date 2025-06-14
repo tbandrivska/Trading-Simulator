@@ -170,7 +170,7 @@ class TradingSimulation:
             **self.STRATEGIES[strategy_name]['params'],
             **params
         }
-        
+
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
         if not self.start_date:
@@ -260,6 +260,17 @@ class TradingSimulation:
 
 
     # 4 simulation Execution
+    def validate_user_input(self, prompt, input_type=str):
+        """
+        General input validation function for user input.
+        """
+        while True:
+            try:
+                value = input_type(input(prompt))
+                return value
+            except ValueError:
+                print(f"Invalid input. Please enter a {input_type.__name__}.")
+                
     def run_simulation(self) -> None:
         """Main simulation loop"""
         if not self.start_date or not self.end_date:
