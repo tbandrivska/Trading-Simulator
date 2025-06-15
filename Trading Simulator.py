@@ -9,6 +9,37 @@ from Balance import Balance
 from Database import Database
 
 class TradingSimulation:
+    """
+    STRATEGIES: A dictionary defining available trading strategies.
+
+    Each strategy contains:
+    - 'description': A brief explanation of the strategy.
+    - 'params': Parameters that can be adjusted to customize the strategy.
+
+    Users can interact with or modify these strategies by:
+    - Adding new strategies with a similar structure.
+    - Adjusting the 'params' values to fit their trading preferences.
+    - Using these strategies during the simulation to automate trading decisions.
+
+    Example:
+    To modify the 'take_profit' strategy threshold to 30%, update:
+    STRATEGIES['take_profit']['params']['threshold'] = 0.3
+    """
+    STRATEGIES = {
+        'take_profit': {
+            'description': 'Sell when stock gains X%',
+            'params': {'threshold': 0.2}  # Default 20%
+        },
+        'stop_loss': {
+            'description': 'Sell when stock loses X%',
+            'params': {'threshold': 0.1}  # Default 10%
+        },
+        'dollar_cost_avg': {
+            'description': 'Buy X shares every Y days',
+            'params': {'shares': 5, 'interval': 7}  # Buy 5 shares every 7 days
+        }
+    }
+
     def __init__(self, start_balance: float = 10000):
         """Initialise simulation with balance and stocks"""
         self.database = Database()
@@ -17,7 +48,7 @@ class TradingSimulation:
         self.balance = Balance(startBalance=start_balance, currentBalance=start_balance)
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
-
+        self.active_strategies: Dict[str, dict] = {} 
         #default start and end dates match the database dates
         self.start_date = self.database.getStartDate()
         self.end_date = self.database.getEndDate() 
@@ -53,7 +84,17 @@ class TradingSimulation:
 
             print("Stock created:" + self.stocks[ticker].get_name())
 
-            
+    def _get_previous_trading_day(self, date: str) -> str:
+        """Find the most recent trading day before given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MAX(date) FROM historicalData 
+            WHERE date < ?
+        """, (date,))
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result if result else date  # Fallback to same date if no previous found
 
     # 2 cofiguration
     def new_simulation(self, simulation_id: str, days: int) -> None:
@@ -85,6 +126,56 @@ class TradingSimulation:
         """)
         conn.commit()
         conn.close()  
+
+    def setup_opening_performance(self):
+        """
+        Calculate and store the opening performance for each stock before the simulation starts.
+        Compares the stock value on the simulation start date with the previous day.
+        """
+        for stock in self.stocks:
+            start_date = self.simulation_start
+            prev_date = start_date - timedelta(days=1)
+            current_price = stock.get_price(start_date)
+            previous_price = stock.get_price(prev_date)
+            if current_price and previous_price:
+                opening_performance = (current_price - previous_price) / previous_price
+                stock.opening_performance = opening_performance
+            else:
+                stock.opening_performance = None
+    def get_user_strategy_choice(self):
+        """
+        Allow user to select a trading strategy from available options.
+        """
+        strategies = ['take_profit', 'stop_loss', 'dollar_cost_avg']  # Example strategies
+        print("Available strategies:")
+        for i, strat in enumerate(strategies, 1):
+            print(f"{i}: {strat}")
+        while True:
+            try:
+                choice = int(input("Select a strategy by number: "))
+                if 1 <= choice <= len(strategies):
+                    return strategies[choice - 1]
+                else:
+                    print("Invalid selection. Try again.")
+            except ValueError:
+                print("Please enter a valid number.")
+    def add_strategy(self, strategy_name: str, **params) -> None:
+        """Add a trading strategy with custom parameters"""
+        if strategy_name not in self.STRATEGIES:
+            raise ValueError(f"Invalid strategy. Available: {list(self.STRATEGIES.keys())}")
+        
+        # Validate parameters
+        valid_params = self.STRATEGIES[strategy_name]['params']
+        for param, value in params.items():
+            if param not in valid_params:
+                raise ValueError(f"Invalid parameter '{param}' for strategy '{strategy_name}'")
+            if isinstance(valid_params[param], float) and not 0 <= value <= 1:
+                raise ValueError(f"Parameter '{param}' must be between 0 and 1")
+        
+        self.active_strategies[strategy_name] = {
+            **self.STRATEGIES[strategy_name]['params'],
+            **params
+        }
 
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
@@ -175,6 +266,17 @@ class TradingSimulation:
 
 
     # 4 simulation Execution
+    def validate_user_input(self, prompt, input_type=str):
+        """
+        General input validation function for user input.
+        """
+        while True:
+            try:
+                value = input_type(input(prompt))
+                return value
+            except ValueError:
+                print(f"Invalid input. Please enter a {input_type.__name__}.")
+                
     def run_simulation(self) -> None:
         """Main simulation loop"""
         if not self.start_date or not self.end_date:
@@ -191,7 +293,7 @@ class TradingSimulation:
         """Get all dates between start and end date"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-        cursor.execute("SELECT start_date, end_date FROM simulations WHERE id = ?", (self.current_simulation_id,))
+        cursor.execute("SELECT start_date, end_date FROM sim_test_simulation WHERE id = ?", (self.current_simulation_id,))
         start, end = cursor.fetchone()
         conn.close()
 
