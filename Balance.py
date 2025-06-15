@@ -1,11 +1,9 @@
 class Balance:
     #initialising the instance variables
-    def __init__(self, startBalance:float=0, currentBalance:float=0, totalInvestedBalance:float=0, startDate=None, endDate=None):
-        self.balance = startBalance
-        self.currentBalance = currentBalance
-        self.totalInvestedBalance = totalInvestedBalance
-        self.startDate = startDate
-        self.endDate = endDate
+    def __init__(self, startBalance:float):
+        self.startBalance = startBalance
+        self.currentBalance = startBalance
+        self.totalInvestedBalance = 0
 
     #getter and setter methods for the instance variables
     def setStartBalance(self, startBalance:float):
@@ -31,15 +29,6 @@ class Balance:
     def getTotalInvestedBalance(self):
         return self.totalInvestedBalance    
 
-    def setStartDate(self, startDate):
-        self.startDate = startDate
-    def getStartDate(self):
-        return self.startDate   
-
-    def setEndDate(self, endDate):
-        self.endDate = endDate
-    def getEndDate(self):
-        return self.endDate 
 
     #purchase method buys stocks and removes the amount from the balance
     def purchase(self, Stock, amount:int):
@@ -70,6 +59,4 @@ class Balance:
         self.startBalance = 0
         self.currentBalance = 0
         self.totalInvestedBalance = 0
-        self.startDate = None
-        self.endDate = None
            

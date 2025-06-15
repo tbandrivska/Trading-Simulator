@@ -45,7 +45,7 @@ class TradingSimulation:
         self.database = Database()
         self.database.initialiseDatabase()
         
-        self.balance = Balance(startBalance=start_balance, currentBalance=start_balance)
+        self.balance = Balance(10000)
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
@@ -91,7 +91,7 @@ class TradingSimulation:
         cursor.execute("""
             SELECT MAX(date) FROM historicalData 
             WHERE date < ?
-        """, (date,))
+        """, (date))
         result = cursor.fetchone()[0]
         conn.close()
         return result if result else date  # Fallback to same date if no previous found
@@ -142,6 +142,7 @@ class TradingSimulation:
                 stock.opening_performance = opening_performance
             else:
                 stock.opening_performance = None
+
     def get_user_strategy_choice(self):
         """
         Allow user to select a trading strategy from available options.
@@ -159,6 +160,7 @@ class TradingSimulation:
                     print("Invalid selection. Try again.")
             except ValueError:
                 print("Please enter a valid number.")
+
     def add_strategy(self, strategy_name: str, **params) -> None:
         """Add a trading strategy with custom parameters"""
         if strategy_name not in self.STRATEGIES:
@@ -218,8 +220,11 @@ class TradingSimulation:
         #purchase stocks or set trading strategies for each stock before simulation begins
         trading:bool = True
         for ticker in self.database.getTickers():
+            stock: Stock = self.stocks[ticker]
             while trading:
-                print("Would you like to purchase or sell " + self.database.getStockName(ticker) + "?(yes/no)")
+                print("Balance: " + str(self.balance.getCurrentBalance()))
+                print(stock.get_name() + " costs: " + str(stock.get_current_value()))
+                print("Would you like to purchase or sell " + stock.get_name() + "?(yes/no)")
                 user_input = input().strip().lower()
                 if user_input == "yes":
                     print("How many shares would you like to buy or sell? (positive to buy, negative to sell)")
@@ -290,30 +295,26 @@ class TradingSimulation:
             self._run_daily_cycle(date)
 
     def _get_simulation_dates(self) -> List[str]:
-        """Get all dates between start and end date"""
+        """Get all dates between start and end date from the simulation table"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-        cursor.execute("SELECT start_date, end_date FROM sim_test_simulation WHERE id = ?", (self.current_simulation_id,))
-        start, end = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT date FROM sim_test_simulation 
+            WHERE id = ? AND date BETWEEN ? AND ? 
+            ORDER BY date ASC
+        """, (self.current_simulation_id, self.start_date, self.end_date))
+
+        rows = cursor.fetchall()
         conn.close()
 
-        if isinstance(start, str):
-            start = datetime.strptime(start, "%Y-%m-%d").date()
-        if isinstance(end, str):
-            end = datetime.strptime(end, "%Y-%m-%d").date()
-
-        delta = end - start
-        listOfDays = []
-        for i in range(delta.days + 1):
-            day = start + timedelta(days=i)
-            listOfDays.append(day.strftime("%Y-%m-%d"))
+        # Extract the dates as strings
+        listOfDays = [row[0] for row in rows]
         return listOfDays
-    
-        #I Changed this funxtion so it returns all the dates in the range because the databse skips weekends and holidays
+
         # Doesnt the Wall street not work over the weekend and on holidays? So like the stock values don't change on those days?? It's stil fine ig nglno
-            # BUT if we want to create a graph that shows the performance of the portfolio over time, 
-                # we need to have all the dates in the range, even if there is no data for that date.
-                    #but its fine because i made an approximation function to fill in the gaps of missing dates in the graph
+            # yup - but stock graphs still show the dates of the weekends and holidays for continuency
+            # stock prices stay the same and the approximation function replicates that
 
     def _run_daily_cycle(self, date: str) -> None:
         """Process one day of trading"""
@@ -419,6 +420,8 @@ class TradingSimulation:
         self.randomiseStartDate()
         self._create_stocks()
         print("phase 1 complete: Stocks created and start date set.")
+        print("starting balance = " + str(self.balance.getStartBalance()))
+        print("current balance = " + str(self.balance.getCurrentBalance()))
         # 2 cofiguration
         self.new_simulation("test_simulation", days=30)
         print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
