@@ -270,7 +270,29 @@ class TradingSimulation:
                 return value
             except ValueError:
                 print(f"Invalid input. Please enter a {input_type.__name__}.")
-                
+    def _apply_strategies(self, stock: Stock, date: str, day_index: int) -> None:
+        """Execute all active trading strategies"""
+        current_value = stock.get_current_value()
+        opening_value = stock.get_opening_value()
+        
+        # Take profit strategy
+        if 'take_profit' in self.active_strategies:
+            threshold = self.active_strategies['take_profit']['threshold']
+            if current_value >= (1 + threshold) * opening_value:
+                self.sell_stock(stock.get_ticker(), stock.get_number_stocks())
+        
+        # Stop loss strategy
+        if 'stop_loss' in self.active_strategies:
+            threshold = self.active_strategies['stop_loss']['threshold']
+            if current_value <= (1 - threshold) * opening_value:
+                self.sell_stock(stock.get_ticker(), stock.get_number_stocks())
+        
+        # Dollar-cost averaging
+        if 'dollar_cost_avg' in self.active_strategies:
+            strategy = self.active_strategies['dollar_cost_avg']
+            if day_index % strategy['interval'] == 0:
+                self.buy_stock(stock.get_ticker(), strategy['shares'])    
+                      
     def run_simulation(self) -> None:
         """Main simulation loop"""
         if not self.start_date or not self.end_date:
