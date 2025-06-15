@@ -122,7 +122,7 @@ class Stock:
         return data[0] if openOrClose.lower() == "open" else data[1]
     
     @staticmethod
-    def fetchOpeningValue(ticker: str, date: str) -> float:
+    def fetchOpeningValue(ticker: str, date) -> float:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
         cursor.execute("""

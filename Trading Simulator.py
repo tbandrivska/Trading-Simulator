@@ -28,6 +28,12 @@ class TradingSimulation:
         """Set a random start date within the available historical data"""
         startDate = self.database.getStartDate()
         endDate = self.database.getEndDate()
+
+        if startDate is None:
+            raise ValueError(f"Stock {startDate} has not been initialized with a current value")
+        if endDate is None:
+            raise ValueError(f"Stock {endDate} has not been initialized with a current value")
+
         delta = endDate - startDate
         random_days = timedelta(days=int(delta.days * random.random()))
         self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
