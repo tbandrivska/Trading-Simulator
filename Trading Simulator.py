@@ -99,6 +99,7 @@ class TradingSimulation:
         conn.close()
         return result if result else date  # Fallback to same date if no previous found
 
+
     # 2 cofiguration
     def new_simulation(self, simulation_id: str, days: int) -> None:
         """Reset everything for a new simulation"""
@@ -221,8 +222,8 @@ class TradingSimulation:
     # 3 simulation setup (purchase stocks and set strategies)
     def trade_each_stock(self) -> None:
         #purchase stocks or set trading strategies for each stock before simulation begins
-        trading:bool = True
         for ticker in self.database.getTickers():
+            trading:bool = True
             stock: Stock = self.stocks[ticker]
             while trading:
                 print("Balance: " + str(self.balance.getCurrentBalance()))
@@ -312,11 +313,8 @@ class TradingSimulation:
         """Main simulation loop"""
         if not self.start_date or not self.end_date:
             raise ValueError("Timeframe not set")
-        
-        self.trade_each_stock()  # Allow user to trade before simulation starts
 
         dates = self._get_simulation_dates()
-        
         for date in dates:
             self._run_daily_cycle(date)
 
@@ -324,12 +322,12 @@ class TradingSimulation:
         """Get all dates between start and end date from the simulation table"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT date FROM sim_test_simulation 
-            WHERE id = ? AND date BETWEEN ? AND ? 
+        
+        cursor.execute(f"""
+            SELECT date FROM sim_{self.current_simulation_id} 
+            WHERE date BETWEEN ? AND ? 
             ORDER BY date ASC
-        """, (self.current_simulation_id, self.start_date, self.end_date))
+        """, (self.start_date, self.end_date))
 
         rows = cursor.fetchall()
         conn.close()
