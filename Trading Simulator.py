@@ -44,11 +44,14 @@ class TradingSimulation:
         """Initialise simulation with balance and stocks"""
         self.database = Database()
         self.database.initialiseDatabase()
-        
-        self.balance = Balance(10000)
+
+        self.start_balance = start_balance
+        self.balance = Balance(start_balance)
+
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
+
         #default start and end dates match the database dates
         self.start_date = self.database.getStartDate()
         self.end_date = self.database.getEndDate() 
@@ -212,7 +215,7 @@ class TradingSimulation:
         for stock in self.stocks.values():
             start_value:float = Stock.fetchOpeningValue(stock.get_ticker(), self.start_date)
             stock.initialise_stock(start_value)
-        self.balance.resetBalance()
+        self.balance.resetBalance(self.start_balance)
 
 
     # 3 simulation setup (purchase stocks and set strategies)
@@ -228,8 +231,8 @@ class TradingSimulation:
                 user_input = input().strip().lower()
                 if user_input == "yes":
                     print("How many shares would you like to buy or sell? (positive to buy, negative to sell)")
+                    amount = int(input()) # Convert string input to integer (add input validation later)
                     try:
-                        amount = int(input()) # Convert string input to integer (add input validation later)
                         if self.trade_stock(ticker, amount):
                             trading = False
                     except ValueError:
@@ -281,6 +284,7 @@ class TradingSimulation:
                 return value
             except ValueError:
                 print(f"Invalid input. Please enter a {input_type.__name__}.")
+
     def _apply_strategies(self, stock: Stock, date: str, day_index: int) -> None:
         """Execute all active trading strategies"""
         current_value = stock.get_current_value()
@@ -460,11 +464,3 @@ class TradingSimulation:
 if __name__ == "__main__":
     simulation = TradingSimulation(start_balance=10000)
     simulation.testRun()
-
-#things to do:
-# - Add more trading strategies and allow user to select them
-# - add input validation for user inputs (phase 3 functions)
-# - create function that sets up the opening_performance of a stock before the simulation starts
-    #maybe have it compare the stock value on the simulation start date and the day before (?)
-# - add better exception handling to end_simulation function
-             

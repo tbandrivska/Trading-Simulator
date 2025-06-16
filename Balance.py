@@ -55,8 +55,8 @@ class Balance:
             return False
 
     #reset method resets the instance variables to their initial values
-    def resetBalance(self):
-        self.startBalance = 0
-        self.currentBalance = 0
+    def resetBalance(self, start_balance:float):
+        self.startBalance = start_balance
+        self.currentBalance = start_balance
         self.totalInvestedBalance = 0
            
