@@ -343,7 +343,8 @@ class TradingSimulation:
     def _run_daily_cycle(self, date: str) -> None:
         """Process one day of trading"""
         #records values at the start of the day (before trading)
-        self._record_portfolio_state(date, "start")            
+        self._record_portfolio_state(date, "start") 
+        print("start of trading day has been recorded in table")           
                 
         for stock in self.stocks.values():
             stock.dailyStockUpdate(date)
@@ -361,22 +362,28 @@ class TradingSimulation:
         cursor = conn.cursor()
         
         for ticker, stock in self.stocks.items():
-            cursor.execute(f"""
-                INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                )
-            """, (
-                date,
-                self.balance.getStartBalance() if phase == "start" else None,
-                self.balance.getCurrentBalance() if phase == "end" else None,
-                self.balance.getTotalInvestedBalance() if phase == "start" else None,
-                self.balance.getTotalInvestedBalance() if phase == "end" else None,
-                ticker,
-                stock.get_number_stocks() if phase == "start" else None,
-                stock.get_number_stocks() if phase == "end" else None,
-                stock.get_current_value() if phase == "start" else None,
-                stock.get_current_value() if phase == "end" else None
-            ))
+            try:
+                cursor.execute(f"""
+                    INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                """, (
+                    date,
+                    self.balance.getStartBalance() if phase == "start" else None,
+                    self.balance.getCurrentBalance() if phase == "end" else None,
+                    ticker,
+                    self.balance.getTotalInvestedBalance() if phase == "start" else None,
+                    self.balance.getTotalInvestedBalance() if phase == "end" else None,
+                    stock.get_number_stocks() if phase == "start" else None,
+                    stock.get_number_stocks() if phase == "end" else None,
+                    stock.get_current_value() if phase == "start" else None,
+                    stock.get_current_value() if phase == "end" else None
+                ))
+
+                print("added " + phase + " of day, trading data for " + ticker)
+
+            except sqlite3.Error as e:
+                print("SQLite error:", e)
         
         conn.commit()
         conn.close()  
