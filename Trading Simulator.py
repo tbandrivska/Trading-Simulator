@@ -314,8 +314,22 @@ class TradingSimulation:
         if not self.start_date or not self.end_date:
             raise ValueError("Timeframe not set")
 
-        dates = self._get_simulation_dates()
-        for date in dates:
+        # Generate all trading dates between start and end date (inclusive)
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT date FROM historicalData
+            WHERE date BETWEEN ? AND ?
+            ORDER BY date ASC
+        """, (self.start_date.strftime("%Y-%m-%d"), self.end_date))
+        rows = cursor.fetchall()
+        conn.close()
+
+        dates = [row[0] for row in rows]
+        for i, date in enumerate(dates):
+            for stock in self.stocks.values():
+                stock.dailyStockUpdate(date)
+                self._apply_strategies(stock, date, i)
             self._run_daily_cycle(date)
 
     def _get_simulation_dates(self) -> List[str]:
