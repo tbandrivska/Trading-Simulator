@@ -286,7 +286,7 @@ class TradingSimulation:
             except ValueError:
                 print(f"Invalid input. Please enter a {input_type.__name__}.")
 
-    def _apply_strategies(self, stock: Stock, date: str, day_index: int) -> None:
+    def _apply_strategies(self, stock: Stock, date: str, day_index: int = None) -> None:
         """Execute all active trading strategies"""
         current_value = stock.get_current_value()
         opening_value = stock.get_opening_value()
@@ -295,19 +295,19 @@ class TradingSimulation:
         if 'take_profit' in self.active_strategies:
             threshold = self.active_strategies['take_profit']['threshold']
             if current_value >= (1 + threshold) * opening_value:
-                self.sell_stock(stock.get_ticker(), stock.get_number_stocks())
+                self.trade_stock(stock.get_ticker(), -stock.get_number_stocks())
         
         # Stop loss strategy
         if 'stop_loss' in self.active_strategies:
             threshold = self.active_strategies['stop_loss']['threshold']
             if current_value <= (1 - threshold) * opening_value:
-                self.sell_stock(stock.get_ticker(), stock.get_number_stocks())
+                self.trade_stock(stock.get_ticker(), -stock.get_number_stocks())
         
-        # Dollar-cost averaging
-        if 'dollar_cost_avg' in self.active_strategies:
-            strategy = self.active_strategies['dollar_cost_avg']
+        # Dollar-cost averaging (only if day_index is provided)
+        if day_index is not None and 'dollar_cost_avg' in self.active_strategies:
+            strategy = self.active_strategies['dollar_cost_avg']['params']
             if day_index % strategy['interval'] == 0:
-                self.buy_stock(stock.get_ticker(), strategy['shares'])    
+                self.trade_stock(stock.get_ticker(), strategy['shares'])
                       
     def run_simulation(self) -> None:
         """Main simulation loop"""
@@ -357,8 +357,7 @@ class TradingSimulation:
     def _run_daily_cycle(self, date: str) -> None:
         """Process one day of trading"""
         #records values at the start of the day (before trading)
-        self._record_portfolio_state(date, "start") 
-        print("start of trading day has been recorded in table")           
+        self._record_portfolio_state(date, "start")            
                 
         for stock in self.stocks.values():
             stock.dailyStockUpdate(date)
@@ -376,37 +375,26 @@ class TradingSimulation:
         cursor = conn.cursor()
         
         for ticker, stock in self.stocks.items():
-            try:
-                cursor.execute(f"""
-                    INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                    )
-                """, (
-                    date,
-                    self.balance.getStartBalance() if phase == "start" else None,
-                    self.balance.getCurrentBalance() if phase == "end" else None,
-                    ticker,
-                    self.balance.getTotalInvestedBalance() if phase == "start" else None,
-                    self.balance.getTotalInvestedBalance() if phase == "end" else None,
-                    stock.get_number_stocks() if phase == "start" else None,
-                    stock.get_number_stocks() if phase == "end" else None,
-                    stock.get_current_value() if phase == "start" else None,
-                    stock.get_current_value() if phase == "end" else None
-                ))
-
-                print("added " + phase + " of day, trading data for " + ticker)
-
-            except sqlite3.Error as e:
-                print("SQLite error:", e)
+            cursor.execute(f"""
+                INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+            """, (
+                date,
+                self.balance.getStartBalance() if phase == "start" else None,
+                self.balance.getCurrentBalance() if phase == "end" else None,
+                self.balance.getTotalInvestedBalance() if phase == "start" else None,
+                self.balance.getTotalInvestedBalance() if phase == "end" else None,
+                ticker,
+                stock.get_number_stocks() if phase == "start" else None,
+                stock.get_number_stocks() if phase == "end" else None,
+                stock.get_current_value() if phase == "start" else None,
+                stock.get_current_value() if phase == "end" else None
+            ))
         
         conn.commit()
         conn.close()  
 
-    def _apply_strategies(self, stock: Stock, date: str) -> None:
-        """Execute all active trading strategies"""
-        # (Example!!!!) Sell if stock gains 20%
-        if stock.get_current_value() >= 1.2 * stock.get_opening_value():
-            self.balance.sell(stock.get_ticker(), stock.get_number_stocks())
 
     def _get_total_value(self) -> float:
         """Calculate total portfolio value (cash + investments)"""
