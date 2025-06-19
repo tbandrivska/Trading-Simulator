@@ -7,38 +7,10 @@ from datetime import datetime
 from Stock import Stock
 from Balance import Balance
 from Database import Database
+import TradingStrategies
 
 class TradingSimulation:
-    """
-    STRATEGIES: A dictionary defining available trading strategies.
-
-    Each strategy contains:
-    - 'description': A brief explanation of the strategy.
-    - 'params': Parameters that can be adjusted to customize the strategy.
-
-    Users can interact with or modify these strategies by:
-    - Adding new strategies with a similar structure.
-    - Adjusting the 'params' values to fit their trading preferences.
-    - Using these strategies during the simulation to automate trading decisions.
-
-    Example:
-    To modify the 'take_profit' strategy threshold to 30%, update:
-    STRATEGIES['take_profit']['params']['threshold'] = 0.3
-    """
-    STRATEGIES = {
-        'take_profit': {
-            'description': 'Sell when stock gains X%',
-            'params': {'threshold': 0.2}  # Default 20%
-        },
-        'stop_loss': {
-            'description': 'Sell when stock loses X%',
-            'params': {'threshold': 0.1}  # Default 10%
-        },
-        'dollar_cost_avg': {
-            'description': 'Buy X shares every Y days',
-            'params': {'shares': 5, 'interval': 7}  # Buy 5 shares every 7 days
-        }
-    }
+    
 
     def __init__(self, start_balance: float = 10000):
         """Initialise simulation with balance and stocks"""
@@ -47,7 +19,8 @@ class TradingSimulation:
 
         self.start_balance = start_balance
         self.balance = Balance(start_balance)
-
+        self.strategies = TradingStrategies(self.balance)
+        
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
