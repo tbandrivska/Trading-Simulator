@@ -402,6 +402,9 @@ class TradingSimulation:
         # 5 simulation termination
         self.end_simulation(new_simulation=False, days = 0)
         print("phase 5 complete: Simulation ended and performance plotted.")
+        self.strategies.activate('take_profit', threshold=0.2)
+
+        self.run_simulation()
 
 if __name__ == "__main__":
     simulation = TradingSimulation(start_balance=10000)
