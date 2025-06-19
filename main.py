@@ -90,6 +90,12 @@ class TradingSimulatorGUI:
     def _run_simulation(self):
         """Execute simulation and update GUI"""
         try:
+            
+            if self.simulator.current_simulation_id is None:
+                from datetime import datetime
+                sim_id = f"gui_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                self.simulator.new_simulation(sim_id, days=30)  # You can make 'days' configurable
+
             self.simulator.run_simulation()
             self._update_summary()
             self._plot_performance()
