@@ -1,6 +1,6 @@
 from typing import Dict
-from Stock import Stock
-from Balance import Balance
+from core.Stock import Stock
+from core.Balance import Balance
 
 class TradingStrategies:
     """

@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import random
 from datetime import datetime
-from Stock import Stock
-from Balance import Balance
-from Database import Database
-import TradingStrategies
-from TradingStrategies import TradingStrategies
+from core.Stock import Stock
+from core.Balance import Balance
+from core.Database import Database
+import core.TradingStrategies as TradingStrategies
+from core.TradingStrategies import TradingStrategies
 
 class TradingSimulation:
     
