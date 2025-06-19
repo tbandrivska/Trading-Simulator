@@ -8,6 +8,7 @@ from Stock import Stock
 from Balance import Balance
 from Database import Database
 import TradingStrategies
+from TradingStrategies import TradingStrategies
 
 class TradingSimulation:
     
