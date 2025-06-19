@@ -2,6 +2,7 @@ import sqlite3
 from typing import Dict, List
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import random
 from datetime import datetime
 from  core.Stock import Stock
@@ -352,8 +353,35 @@ class TradingSimulation:
         else:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
-
-
+    def plot_performance(self, show=True):
+        """Generate performance graph (returns matplotlib Figure)"""
+        fig = Figure(figsize=(8, 4))
+        ax = fig.add_subplot(111)
+        
+        # Get data from database
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT date, end_balance + end_invested as total
+            FROM sim_{self.current_simulation_id}
+            WHERE ticker = 'AAPL'  -- Just need one row per date
+            ORDER BY date
+        """)
+        data = cursor.fetchall()
+        conn.close()
+        
+        # Plot data
+        dates = [row[0] for row in data]
+        values = [row[1] for row in data]
+        ax.plot(dates, values, marker='o')
+        ax.set_title("Portfolio Value Over Time")
+        ax.grid(True)
+        fig.autofmt_xdate()
+        
+        if show:
+            plt.show()
+        return fig
+      
 
     #test method to run the simulation
     def testRun(self):
@@ -386,31 +414,3 @@ if __name__ == "__main__":
 # In TradingSimulation.py
 from matplotlib.figure import Figure
 
-def plot_performance(self, show=True):
-    """Generate performance graph (returns matplotlib Figure)"""
-    fig = Figure(figsize=(8, 4))
-    ax = fig.add_subplot(111)
-    
-    # Get data from database
-    conn = sqlite3.connect('data.db')
-    cursor = conn.cursor()
-    cursor.execute(f"""
-        SELECT date, end_balance + end_invested as total
-        FROM sim_{self.current_simulation_id}
-        WHERE ticker = 'AAPL'  # Just need one row per date
-        ORDER BY date
-    """)
-    data = cursor.fetchall()
-    conn.close()
-    
-    # Plot data
-    dates = [row[0] for row in data]
-    values = [row[1] for row in data]
-    ax.plot(dates, values, marker='o')
-    ax.set_title("Portfolio Value Over Time")
-    ax.grid(True)
-    fig.autofmt_xdate()
-    
-    if show:
-        plt.show()
-    return fig
