@@ -62,8 +62,8 @@ class TradingStrategies:
 
     def _dollar_cost_avg(self, stock: Stock, day_index: int) -> None:
         """Buy fixed shares at regular intervals"""
-        if day_index is None:
-            return
-            
+        if not isinstance(day_index, int):
+            return  
+
         if day_index % self.strategies['dollar_cost_avg']['interval'] == 0:
             self.balance.purchase(stock, self.strategies['dollar_cost_avg']['shares'])

@@ -8,6 +8,7 @@ from Stock import Stock
 from Balance import Balance
 from Database import Database
 import TradingStrategies
+from TradingStrategies import TradingStrategies
 
 class TradingSimulation:
     
@@ -138,23 +139,6 @@ class TradingSimulation:
             except ValueError:
                 print("Please enter a valid number.")
 
-    def add_strategy(self, strategy_name: str, **params) -> None:
-        """Add a trading strategy with custom parameters"""
-        if strategy_name not in self.STRATEGIES:
-            raise ValueError(f"Invalid strategy. Available: {list(self.STRATEGIES.keys())}")
-        
-        # Validate parameters
-        valid_params = self.STRATEGIES[strategy_name]['params']
-        for param, value in params.items():
-            if param not in valid_params:
-                raise ValueError(f"Invalid parameter '{param}' for strategy '{strategy_name}'")
-            if isinstance(valid_params[param], float) and not 0 <= value <= 1:
-                raise ValueError(f"Parameter '{param}' must be between 0 and 1")
-        
-        self.active_strategies[strategy_name] = {
-            **self.STRATEGIES[strategy_name]['params'],
-            **params
-        }
 
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
@@ -259,28 +243,6 @@ class TradingSimulation:
             except ValueError:
                 print(f"Invalid input. Please enter a {input_type.__name__}.")
 
-    def _apply_strategies(self, stock: Stock, date: str, day_index: int = None) -> None:
-        """Execute all active trading strategies"""
-        current_value = stock.get_current_value()
-        opening_value = stock.get_opening_value()
-        
-        # Take profit strategy
-        if 'take_profit' in self.active_strategies:
-            threshold = self.active_strategies['take_profit']['threshold']
-            if current_value >= (1 + threshold) * opening_value:
-                self.trade_stock(stock.get_ticker(), -stock.get_number_stocks())
-        
-        # Stop loss strategy
-        if 'stop_loss' in self.active_strategies:
-            threshold = self.active_strategies['stop_loss']['threshold']
-            if current_value <= (1 - threshold) * opening_value:
-                self.trade_stock(stock.get_ticker(), -stock.get_number_stocks())
-        
-        # Dollar-cost averaging (only if day_index is provided)
-        if day_index is not None and 'dollar_cost_avg' in self.active_strategies:
-            strategy = self.active_strategies['dollar_cost_avg']['params']
-            if day_index % strategy['interval'] == 0:
-                self.trade_stock(stock.get_ticker(), strategy['shares'])
                       
     def run_simulation(self) -> None:
         """Main simulation loop"""
@@ -302,7 +264,7 @@ class TradingSimulation:
         for i, date in enumerate(dates):
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
-                self._apply_strategies(stock, date, i)
+                self.strategies.apply(stock, i)
             self._run_daily_cycle(date)
 
     def _get_simulation_dates(self) -> List[str]:
@@ -334,7 +296,7 @@ class TradingSimulation:
                 
         for stock in self.stocks.values():
             stock.dailyStockUpdate(date)
-            self._apply_strategies(stock, date)
+            self.strategies.apply(stock, date)
 
         self._record_portfolio_state(date, "end")
         
@@ -440,6 +402,9 @@ class TradingSimulation:
         # 5 simulation termination
         self.end_simulation(new_simulation=False, days = 0)
         print("phase 5 complete: Simulation ended and performance plotted.")
+        self.strategies.activate('take_profit', threshold=0.2)
+
+        self.run_simulation()
 
 if __name__ == "__main__":
     simulation = TradingSimulation(start_balance=10000)
