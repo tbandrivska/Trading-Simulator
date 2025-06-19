@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import random
 from datetime import datetime
-from core.Stock import Stock
+from  core.Stock import Stock
 from core.Balance import Balance
 from core.Database import Database
 import core.TradingStrategies as TradingStrategies
@@ -353,32 +353,6 @@ class TradingSimulation:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
 
-    def plot_performance(self) -> None:
-        """Generate performance graph without using pandas"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        
-        cursor.execute(f"""
-            SELECT date, end_balance, end_invested 
-            FROM sim_{self.current_simulation_id}
-            WHERE ticker = 'AAPL'
-            ORDER BY date
-        """)
-        
-        rows = cursor.fetchall()
-        conn.close()
-
-        dates = [datetime.strptime(row[0], "%Y-%m-%d") for row in rows]
-        total_values = [row[1] + row[2] for row in rows]
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(dates, total_values, marker='o')
-        plt.title("Portfolio Value Over Time")
-        plt.xlabel("Date")
-        plt.ylabel("Total Value")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
 
 
     #test method to run the simulation
@@ -409,3 +383,34 @@ class TradingSimulation:
 if __name__ == "__main__":
     simulation = TradingSimulation(start_balance=10000)
     simulation.testRun()
+# In TradingSimulation.py
+from matplotlib.figure import Figure
+
+def plot_performance(self, show=True):
+    """Generate performance graph (returns matplotlib Figure)"""
+    fig = Figure(figsize=(8, 4))
+    ax = fig.add_subplot(111)
+    
+    # Get data from database
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        SELECT date, end_balance + end_invested as total
+        FROM sim_{self.current_simulation_id}
+        WHERE ticker = 'AAPL'  # Just need one row per date
+        ORDER BY date
+    """)
+    data = cursor.fetchall()
+    conn.close()
+    
+    # Plot data
+    dates = [row[0] for row in data]
+    values = [row[1] for row in data]
+    ax.plot(dates, values, marker='o')
+    ax.set_title("Portfolio Value Over Time")
+    ax.grid(True)
+    fig.autofmt_xdate()
+    
+    if show:
+        plt.show()
+    return fig
