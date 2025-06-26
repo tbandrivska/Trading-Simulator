@@ -2,13 +2,13 @@ import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from TradingSimulator import TradingSimulation
+from TradingSimulator import TradingSimulator
 
 class TradingSimulatorGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Stock Trading Simulator")
-        self.simulator = TradingSimulation(start_balance=10000)
+        self.simulator = TradingSimulator(start_balance=10000)
         
         # Configure main window
         self.root.geometry("1000x700")

@@ -12,7 +12,7 @@ from Database import Database
 import TradingStrategies as TradingStrategies
 from TradingStrategies import TradingStrategies
 
-class TradingSimulation:
+class TradingSimulator:
     
     #methods that are up for discussion
     def _get_previous_trading_day(self, date: str) -> str:
@@ -462,7 +462,7 @@ class TradingSimulation:
 
 
 if __name__ == "__main__":
-    simulation = TradingSimulation(start_balance=10000)
+    simulation = TradingSimulator(start_balance=10000)
     simulation.testRun()
 # In TradingSimulation.py
 from matplotlib.figure import Figure
