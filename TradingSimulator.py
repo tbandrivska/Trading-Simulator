@@ -6,11 +6,11 @@ from matplotlib.figure import Figure
 from collections import Counter
 import random
 from datetime import datetime
-from core.Stock import Stock
-from core.Balance import Balance
-from core.Database import Database
-import core.TradingStrategies as TradingStrategies
-from core.TradingStrategies import TradingStrategies
+from Stock import Stock
+from Balance import Balance
+from Database import Database
+import TradingStrategies as TradingStrategies
+from TradingStrategies import TradingStrategies
 
 class TradingSimulation:
     

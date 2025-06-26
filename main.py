@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from core.TradingSimulator import TradingSimulation
+from TradingSimulator import TradingSimulation
 
 class TradingSimulatorGUI:
     def __init__(self, root):
