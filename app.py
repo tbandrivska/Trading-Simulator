@@ -3,6 +3,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QPushButton, QLabel,
     QTabWidget
 )
+import sqlite3
+from datetime import datetime
 from PySide6.QtCore import Qt
 from widgets.strategy_config import StrategyConfigDialog
 from widgets.performance_chart import PerformanceChart
@@ -62,10 +64,15 @@ class TradingSimulatorApp(QMainWindow):
 
     def _run_simulation(self):
         try:
+            # 1. Initialize simulation first
+            sim_id = f"sim_{datetime.now().strftime('%H%M%S')}"
+            self.simulator.new_simulation(sim_id, days=30)
+        
+            # 2. Then run
             self.simulator.run_simulation()
-            self._update_ui()
-        except Exception as e:
-            self._show_error(str(e))
+        
+        except sqlite3.Error as e:
+            self._show_error(f"Database error: {str(e)}")
 
     def _update_ui(self):
         # Update summary

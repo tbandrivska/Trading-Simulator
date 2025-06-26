@@ -361,6 +361,9 @@ class TradingSimulator:
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
         
+        if not self.current_simulation_id:
+            raise ValueError("Simulation ID not set! Call new_simulation() first")
+
         for ticker, stock in self.stocks.items():
             cursor.execute(f"""
                 INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
@@ -378,7 +381,16 @@ class TradingSimulator:
                 stock.get_current_value() if phase == "start" else None,
                 stock.get_current_value() if phase == "end" else None
             ))
-        
+
+        try:
+            conn = sqlite3.connect('data.db')
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='sim_{self.current_simulation_id}'")
+            if not cursor.fetchone():
+                self._create_simulation_table()
+            # ... rest of your recording code ...
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
         conn.commit()
         conn.close()  
 
