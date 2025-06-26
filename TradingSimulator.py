@@ -79,6 +79,10 @@ class TradingSimulator:
         self.database = Database()
         self.database.initialiseDatabase()
 
+        #default start and end dates match the database dates
+        self.start_date = self.database.getStartDate()
+        self.end_date = self.database.getEndDate() 
+        
         self.start_balance = start_balance
         self.balance = Balance(start_balance)
         self.strategies = TradingStrategies(self.balance)
@@ -89,9 +93,7 @@ class TradingSimulator:
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
 
-        #default start and end dates match the database dates
-        self.start_date = self.database.getStartDate()
-        self.end_date = self.database.getEndDate() 
+        
 
     def _create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
