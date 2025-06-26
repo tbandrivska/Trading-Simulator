@@ -12,7 +12,7 @@ class Stock:
         self.current_performance = self.update_performance()
         self.number_stocks = 0
         
-
+        
     def __str__(self):
         return (
             f"Stock(name={self.name}, "
@@ -21,6 +21,7 @@ class Stock:
             f"current_value={self.current_value:.2f}, "
             f"performance={self.current_performance:.2f}%)"
         )
+
 
     # Getters
     def get_name(self) -> str:
@@ -47,12 +48,14 @@ class Stock:
             self.invested_balance = value
         else:
             raise ValueError("Invested balance cannot be negative.")
+        
     def set_current_value(self, value: float):
         if value >= 0:
             self.current_value = value
             self.update_performance()  # Recalculate performance when value changes
         else:
             raise ValueError("Stock value cannot be negative.")
+        
     def set_number_stocks(self, quantity: int):
         if quantity >= 0:
             self.number_stocks = quantity

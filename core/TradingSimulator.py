@@ -3,9 +3,10 @@ from typing import Dict, List
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from collections import Counter
 import random
 from datetime import datetime
-from  core.Stock import Stock
+from core.Stock import Stock
 from core.Balance import Balance
 from core.Database import Database
 import core.TradingStrategies as TradingStrategies
@@ -13,7 +14,66 @@ from core.TradingStrategies import TradingStrategies
 
 class TradingSimulation:
     
+    #methods that are up for discussion
+    def _get_previous_trading_day(self, date: str) -> str:
+        """Find the most recent trading day before given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MAX(date) FROM historicalData 
+            WHERE date < ?
+        """, (date))
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result if result else date  # Fallback to same date if no previous found
 
+    def get_user_strategy_choice(self):
+            """
+            Allow user to select a trading strategy from available options.
+            """
+            strategies = ['take_profit', 'stop_loss', 'dollar_cost_avg']  # Example strategies
+            print("Available strategies:")
+            for i, strat in enumerate(strategies, 1):
+                print(f"{i}: {strat}")
+            while True:
+                try:
+                    choice = int(input("Select a strategy by number: "))
+                    if 1 <= choice <= len(strategies):
+                        return strategies[choice - 1]
+                    else:
+                        print("Invalid selection. Try again.")
+                except ValueError:
+                    print("Please enter a valid number.")
+
+    def setup_opening_performance(self):
+        """
+        Calculate and store the opening performance for each stock before the simulation starts.
+        Compares the stock value on the simulation start date with the previous day.
+        """
+        for stock in self.stocks:
+            start_date = self.simulation_start
+            prev_date = start_date - timedelta(days=1)
+            current_price = stock.get_price(start_date)
+            previous_price = stock.get_price(prev_date)
+            if current_price and previous_price:
+                opening_performance = (current_price - previous_price) / previous_price
+                stock.opening_performance = opening_performance
+            else:
+                stock.opening_performance = None
+
+    def validate_user_input(self, prompt, input_type=str):
+        """
+        General input validation function for user input.
+        """
+        while True:
+            try:
+                value = input_type(input(prompt))
+                return value
+            except ValueError:
+                print(f"Invalid input. Please enter a {input_type.__name__}.")
+
+
+    # 1 initialisation
     def __init__(self, start_balance: float = 10000):
         """Initialise simulation with balance and stocks"""
         self.database = Database()
@@ -24,30 +84,14 @@ class TradingSimulation:
         self.strategies = TradingStrategies(self.balance)
         
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
+        self._create_stocks()
+
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
 
         #default start and end dates match the database dates
         self.start_date = self.database.getStartDate()
         self.end_date = self.database.getEndDate() 
-
-
-    # 1 initialisation of startdate and stocks
-    def randomiseStartDate(self) -> None:
-        """Set a random start date within the available historical data"""
-        startDate = self.database.getStartDate()
-        endDate = self.database.getEndDate()
-
-        if startDate is None:
-            raise ValueError(f"Stock {startDate} has not been initialized with a current value")
-        if endDate is None:
-            raise ValueError(f"Stock {endDate} has not been initialized with a current value")
-
-        delta = endDate - startDate
-        random_days = timedelta(days=int(delta.days * random.random()))
-        self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
-        
-        print(f"Random start date set: {self.start_date.strftime('%Y-%m-%d')}")
 
     def _create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
@@ -62,25 +106,19 @@ class TradingSimulation:
 
             print("Stock created:" + self.stocks[ticker].get_name())
 
-    def _get_previous_trading_day(self, date: str) -> str:
-        """Find the most recent trading day before given date"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT MAX(date) FROM historicalData 
-            WHERE date < ?
-        """, (date))
-        result = cursor.fetchone()[0]
-        conn.close()
-        return result if result else date  # Fallback to same date if no previous found
-
-
-    # 2 cofiguration
+    
+    # 2 cofiguration - new: sim name, table, start date and reset stocks
     def new_simulation(self, simulation_id: str, days: int) -> None:
         """Reset everything for a new simulation"""
+        # insert method to genrate simulation_id
+            # simulation_id = generate_sim_id()
         self.current_simulation_id = simulation_id
-        self.set_timeframe(days) 
+
         self._create_simulation_table()
+
+        self.randomiseStartDate()
+        self.set_timeframe(days) 
+
         self._reset_all()
 
     def _create_simulation_table(self) -> None:
@@ -106,40 +144,21 @@ class TradingSimulation:
         conn.commit()
         conn.close()  
 
-    def setup_opening_performance(self):
-        """
-        Calculate and store the opening performance for each stock before the simulation starts.
-        Compares the stock value on the simulation start date with the previous day.
-        """
-        for stock in self.stocks:
-            start_date = self.simulation_start
-            prev_date = start_date - timedelta(days=1)
-            current_price = stock.get_price(start_date)
-            previous_price = stock.get_price(prev_date)
-            if current_price and previous_price:
-                opening_performance = (current_price - previous_price) / previous_price
-                stock.opening_performance = opening_performance
-            else:
-                stock.opening_performance = None
+    def randomiseStartDate(self) -> None:
+            """Set a random start date within the available historical data"""
+            startDate = self.database.getStartDate()
+            endDate = self.database.getEndDate()
 
-    def get_user_strategy_choice(self):
-        """
-        Allow user to select a trading strategy from available options.
-        """
-        strategies = ['take_profit', 'stop_loss', 'dollar_cost_avg']  # Example strategies
-        print("Available strategies:")
-        for i, strat in enumerate(strategies, 1):
-            print(f"{i}: {strat}")
-        while True:
-            try:
-                choice = int(input("Select a strategy by number: "))
-                if 1 <= choice <= len(strategies):
-                    return strategies[choice - 1]
-                else:
-                    print("Invalid selection. Try again.")
-            except ValueError:
-                print("Please enter a valid number.")
+            if startDate is None:
+                raise ValueError(f"Stock {startDate} has not been initialized with a current value")
+            if endDate is None:
+                raise ValueError(f"Stock {endDate} has not been initialized with a current value")
 
+            delta = endDate - startDate
+            random_days = timedelta(days=int(delta.days * random.random()))
+            self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
+            
+            print(f"Random start date set: {self.start_date.strftime('%Y-%m-%d')}")
 
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
@@ -153,6 +172,51 @@ class TradingSimulation:
         
         self.end_date = end_date.strftime("%Y-%m-%d")
         print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
+
+
+    #ignore for now - needs rewriting and debugging
+    def loop_dates(self):
+        """If a time frame is longer than we have days for, use the final date we have
+        to locate a previous date with similar values. Now everytime the final date is reached,
+        we continue from this date"""
+        finalDate = Database.getEndDate
+
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        dates = []
+        #find all valid dates where stocks have the same value 
+        for Stock in self.stocks:
+            ticker = Stock.get_ticker()
+            OpeningValue = Stock.fetchOpeningValue(finalDate)
+            cursor.execute("""
+                           SELECT date WHERE open EQUALS ?
+                           AND ticker = ?
+            """,(OpeningValue, ticker))
+            dates = cursor.fetchone()[0]
+
+        #if a date occurs 3 or more times, its valid for use and should be returned
+        date_counts = Counter(dates) # Count occurrences
+        frequent_dates = [date for date, count in date_counts.items() if count >= 5] # Filter dates with 5 or more occurrences
+        if len(frequent_dates) != 0:
+            if frequent_dates[0] != finalDate:
+                return frequent_dates[0]
+        
+        for date in dates:
+            count = 0
+            for Stock in self.stocks:
+                ticker = Stock.get_ticker()
+                cursor.execute("""
+                                SELECT open WHERE date EQUALS ?
+                               AND ticker = ?
+                """,(date,ticker))
+                OpeningValue = cursor.fetchone()[1]
+
+                if Stock.fetchOpeningValue(date) * 0.95 <= OpeningValue <= Stock.fetchOpeningValue(date) * 1.05:
+                    count = count + 1
+                if 5 <= count: #if 5 or more stocks on a date have a oepning value within the 5% range, return the date
+                    if frequent_dates[0] != finalDate:
+                        return date
 
     def _validate_dates(self, start: str, end: str) -> bool:
         """Check if dates exist in database"""
@@ -192,7 +256,7 @@ class TradingSimulation:
                     print("How many shares would you like to buy or sell? (positive to buy, negative to sell)")
                     amount = int(input()) # Convert string input to integer (add input validation later)
                     try:
-                        if self.trade_stock(ticker, amount):
+                        if self.trade_a_stock(ticker, amount):
                             trading = False
                     except ValueError:
                         print("Invalid input. Please enter a valid number.")
@@ -203,7 +267,7 @@ class TradingSimulation:
                       
         #insert another loop here to apply strategies to each stock  
 
-    def trade_stock(self, ticker: str, amount: int) -> bool:
+    def trade_a_stock(self, ticker: str, amount: int) -> bool:
         """Buy or sell stocks based on current balance"""
         if ticker not in self.stocks:
             raise ValueError(f"Stock {ticker} not found in portfolio")
@@ -233,18 +297,6 @@ class TradingSimulation:
 
 
     # 4 simulation Execution
-    def validate_user_input(self, prompt, input_type=str):
-        """
-        General input validation function for user input.
-        """
-        while True:
-            try:
-                value = input_type(input(prompt))
-                return value
-            except ValueError:
-                print(f"Invalid input. Please enter a {input_type.__name__}.")
-
-                      
     def run_simulation(self) -> None:
         """Main simulation loop"""
         if not self.start_date or not self.end_date:
@@ -331,7 +383,6 @@ class TradingSimulation:
         conn.commit()
         conn.close()  
 
-
     def _get_total_value(self) -> float:
         """Calculate total portfolio value (cash + investments)"""
         total = self.balance.getCurrentBalance()
@@ -353,6 +404,7 @@ class TradingSimulation:
         else:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
+    
     def plot_performance(self, show=True):
         """Generate performance graph (returns matplotlib Figure)"""
         fig = Figure(figsize=(8, 4))
@@ -383,7 +435,7 @@ class TradingSimulation:
         return fig
       
 
-    #test method to run the simulation
+    #test methods to run the simulation
     def testRun(self):
         """Run a test simulation with random parameters"""
         # 1 initialisation of startdate and stocks
@@ -407,6 +459,7 @@ class TradingSimulation:
         self.strategies.activate('take_profit', threshold=0.2)
 
         self.run_simulation()
+
 
 if __name__ == "__main__":
     simulation = TradingSimulation(start_balance=10000)
