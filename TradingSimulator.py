@@ -111,16 +111,13 @@ class TradingSimulator:
     
     # 2 cofiguration - new: sim name, table, start date and reset stocks
     def new_simulation(self, simulation_id: str, days: int) -> None:
-        """Reset everything for a new simulation"""
-        # insert method to genrate simulation_id
-            # simulation_id = generate_sim_id()
+        """Initialize a new simulation with valid ID"""
+        if not simulation_id:
+            # Generate auto ID if none provided
+            simulation_id = f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
         self.current_simulation_id = simulation_id
-
-        self._create_simulation_table()
-
-        self.randomiseStartDate()
-        self.set_timeframe(days) 
-
+        self._create_simulation_table()  # Must be called before run!
         self._reset_all()
 
     def _create_simulation_table(self) -> None:
@@ -407,34 +404,7 @@ class TradingSimulator:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
     
-    def plot_performance(self, show=True):
-        """Generate performance graph (returns matplotlib Figure)"""
-        fig = Figure(figsize=(8, 4))
-        ax = fig.add_subplot(111)
-        
-        # Get data from database
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            SELECT date, end_balance + end_invested as total
-            FROM sim_{self.current_simulation_id}
-            WHERE ticker = 'AAPL'  -- Just need one row per date
-            ORDER BY date
-        """)
-        data = cursor.fetchall()
-        conn.close()
-        
-        # Plot data
-        dates = [row[0] for row in data]
-        values = [row[1] for row in data]
-        ax.plot(dates, values, marker='o')
-        ax.set_title("Portfolio Value Over Time")
-        ax.grid(True)
-        fig.autofmt_xdate()
-        
-        if show:
-            plt.show()
-        return fig
+
       
 
     #test methods to run the simulation
