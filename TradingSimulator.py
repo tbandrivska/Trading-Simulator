@@ -383,8 +383,6 @@ class TradingSimulator:
             ))
 
         try:
-            conn = sqlite3.connect('data.db')
-            cursor = conn.cursor()
             cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='sim_{self.current_simulation_id}'")
             if not cursor.fetchone():
                 self._create_simulation_table()

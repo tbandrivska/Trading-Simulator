@@ -57,10 +57,16 @@ class TradingSimulatorApp(QMainWindow):
         # Performance Chart
         self.chart = PerformanceChart()
         layout.addWidget(self.chart)
+        #Update the UI
+        self._update_ui()
+    
 
     def _open_strategy_config(self):
         dialog = StrategyConfigDialog(self.simulator, self)
         dialog.exec()
+        #Update the UI
+        self._update_ui()
+    
 
     def _run_simulation(self):
         try:
@@ -70,6 +76,9 @@ class TradingSimulatorApp(QMainWindow):
         
             # 2. Then run
             self.simulator.run_simulation()
+             # 3. Update the UI
+            self._update_ui()
+    
         
         except sqlite3.Error as e:
             self._show_error(f"Database error: {str(e)}")
@@ -94,3 +103,10 @@ class TradingSimulatorApp(QMainWindow):
     def _show_error(self, message):
         from PySide6.QtWidgets import QMessageBox
         QMessageBox.critical(self, "Error", message)
+
+    # test
+    simulator = TradingSimulator()
+    simulator.new_simulation("test_1", 7)  # Should create table
+    simulator.run_simulation()             # Should work        
+
+    
