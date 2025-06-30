@@ -19,7 +19,7 @@ class StrategyConfigDialog(QDialog):
             group = QWidget()
             group_layout = QVBoxLayout(group)
             
-            cb = QCheckBox(config['description'])
+            cb = QCheckBox(config.get('description', 'No description'))
             cb.setChecked(config['active'])
             self.checkboxes[name] = cb
             group_layout.addWidget(cb)

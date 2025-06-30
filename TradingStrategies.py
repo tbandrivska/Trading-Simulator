@@ -16,18 +16,21 @@ class TradingStrategies:
             'take_profit': {
                 'active': False,
                 'threshold': 0.2,  # 20%
-                'action': self._take_profit
+                'action': self._take_profit,
+                'description': 'Take profit when gain exceeds threshold'
             },
             'stop_loss': {
                 'active': False,
                 'threshold': 0.1,  # 10%
-                'action': self._stop_loss
+                'action': self._stop_loss,
+                'description': 'Sell if loss exceeds threshold'
             },
             'dollar_cost_avg': {
                 'active': False,
                 'shares': 5,
                 'interval': 7,
-                'action': self._dollar_cost_avg
+                'action': self._dollar_cost_avg,
+                'description': 'Invest a fixed amount regularly'
             }
         }
 

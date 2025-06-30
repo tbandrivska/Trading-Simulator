@@ -104,9 +104,5 @@ class TradingSimulatorApp(QMainWindow):
         from PySide6.QtWidgets import QMessageBox
         QMessageBox.critical(self, "Error", message)
 
-    # test
-    simulator = TradingSimulator()
-    simulator.new_simulation("test_1", 7)  # Should create table
-    simulator.run_simulation()             # Should work        
-
+   
     
