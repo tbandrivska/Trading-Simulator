@@ -70,3 +70,15 @@ class TradingStrategies:
 
         if day_index % self.strategies['dollar_cost_avg']['interval'] == 0:
             self.balance.purchase(stock, self.strategies['dollar_cost_avg']['shares'])
+    def activate(self, name: str, **params):
+        """Activate a strategy with parameters"""
+        if name in self.strategies:
+            self.strategies[name]['active'] = True
+            for param, value in params.items():
+                if param in self.strategies[name]:
+                    self.strategies[name][param] = value
+
+    def deactivate(self, name: str):
+        """Deactivate a strategy"""
+        if name in self.strategies:
+            self.strategies[name]['active'] = False
