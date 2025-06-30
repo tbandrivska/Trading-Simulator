@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QWidget
 from PySide6.QtWidgets import QVBoxLayout
+from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -21,6 +22,7 @@ class PerformanceChart(QWidget):
         if history:
             dates, values = zip(*history)
             ax.plot(dates, values, 'b-')
+            plt.plot(dates, values, marker='o', linestyle='-') 
         else:
             ax.plot([], [], 'b-')
 
