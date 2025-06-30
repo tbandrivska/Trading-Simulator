@@ -90,6 +90,7 @@ class TradingSimulatorApp(QMainWindow):
             s.get_current_value() * s.get_number_stocks() 
             for s in self.simulator.stocks.values()
         )
+        print(f"DEBUG: balance={balance}, invested={invested}")
         self.summary_label.setText(
             f"<b>Portfolio Summary</b><br>"
             f"Cash: ${balance:,.2f}<br>"
@@ -99,7 +100,7 @@ class TradingSimulatorApp(QMainWindow):
 
         # Update chart
         self.chart.plot_performance(self.simulator)
-
+        
     def _show_error(self, message):
         from PySide6.QtWidgets import QMessageBox
         QMessageBox.critical(self, "Error", message)

@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget
 from PySide6.QtWidgets import QVBoxLayout
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 class PerformanceChart(QWidget):
@@ -14,12 +15,16 @@ class PerformanceChart(QWidget):
     def plot_performance(self, simulator):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
-        
-        # Get data from simulator
-        dates = []
-        values = []
-        # ... (implement data fetching)
-        
-        ax.plot(dates, values, 'b-')
+
+        # Example: Suppose simulator has a list of (date, value) tuples
+        history = getattr(simulator, "performance_history", [])
+        if history:
+            dates, values = zip(*history)
+            ax.plot(dates, values, 'b-')
+        else:
+            ax.plot([], [], 'b-')
+
         ax.set_title("Portfolio Performance")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Portfolio Value")
         self.canvas.draw()

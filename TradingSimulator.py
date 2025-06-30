@@ -92,7 +92,7 @@ class TradingSimulator:
 
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
-
+        self.performance_history = [] 
         
 
     def _create_stocks(self) -> None:
@@ -318,6 +318,9 @@ class TradingSimulator:
                 stock.dailyStockUpdate(date)
                 self.strategies.apply(stock, i)
             self._run_daily_cycle(date)
+            portfolio_value = self._get_total_value()
+            self.performance_history.append((date, portfolio_value))  
+        
 
     def _get_simulation_dates(self) -> List[str]:
         """Get all dates between start and end date from the simulation table"""
