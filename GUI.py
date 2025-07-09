@@ -4,14 +4,17 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QGridLayout, QLineEdit, QGroupBox, QSpinBox,
     QFormLayout, QSizePolicy, 
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRect, Qt
 import sqlite3
+from Stock import Stock
+from TradingSimulator import TradingSimulator
 
 app = QApplication(sys.argv)
 
 class startWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.simulator = TradingSimulator(10000)  #Initialise simulator with a default balance
         self.resize(1200, 600)
         self.setWindowTitle("Start Menu")
 
@@ -43,7 +46,7 @@ class startWindow(QWidget):
         self.exitButton.clicked.connect(QApplication.quit)
 
     def displaySimDetailsFunc(self):
-        self.display_sim_details_obj = displaySimDetails(self)
+        self.display_sim_details_obj = displaySimDetails(self, None)
         self.display_sim_details_obj.show()
         self.hide()
 
@@ -54,19 +57,24 @@ class displaySimDetails(QWidget):
     def __init__(self, startWindow, current_simulation_id = None):
         super().__init__()
         self.startWindow = startWindow
+        self.simulator = self.startWindow.simulator 
+        self.simulator.new_simulation(current_simulation_id)  # Start a new simulation if ID is not provided
+        
         self.resize(1200, 600)
-        self.setWindowTitle("SIMULATION ID: ...")
+        self.setWindowTitle("SIMULATION ID: " + self.simulator.get_sim_id())
 
         #Total Balance and Cash Balance
-        total_balance_label = QLabel("TOTAL BALANCE: £...")
-        cash_balance_label = QLabel("CASH BALANCE: £...")
+        cash_balance = self.simulator.balance.getCurrentBalance()
+        invested_balance = self.simulator.balance.getTotalInvestedBalance()
+        total_balance = cash_balance + invested_balance
+        total_balance_label = QLabel("TOTAL BALANCE: £" + str(total_balance))
+        cash_balance_label = QLabel("CASH BALANCE: £" + str(cash_balance))
 
         balance_layout = QVBoxLayout()
         balance_layout.addWidget(total_balance_label)
         balance_layout.addWidget(cash_balance_label)
 
         #Stock tabel: name, performannce, value
-            #stock name is a button - trigger displayStock
         stock_grid = QGridLayout()
         for i in range(4):
             if i%2 == 0:
@@ -76,18 +84,22 @@ class displaySimDetails(QWidget):
         for i in range(5):
             stock_grid.setRowMinimumHeight(i,60)
 
-        for i in range(10): #change to loop through tickers???
-            stock_button = QPushButton(f"STOCK {i+1}")
-            stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            performance_label = QLabel("± x%")
-            #performance_label.setStyleSheet("border: 1px solid gray")
-            value_label = QLabel("£....")
-            #value_label.setStyleSheet("border: 1px solid gray")
-
+        for i in range(10):
+            Stock = self.get_stock(i)
             stock_details = QVBoxLayout()
-            stock_details.addWidget(value_label)
+
+            stock_name = Stock.get_name()
+            stock_button = QPushButton(stock_name)
+            stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+            stock_performance = Stock.get_current_performance()
+            performance_label = QLabel(str(stock_performance) + "%")
             stock_details.addWidget(performance_label)
 
+            stock_value = round(Stock.get_current_value(),2)
+            value_label = QLabel("£" + str(stock_value))
+            stock_details.addWidget(value_label)
+            
             if(i<5):
                 stock_grid.addWidget(stock_button,i,0)
                 stock_grid.addLayout(stock_details,i,1)
@@ -101,7 +113,7 @@ class displaySimDetails(QWidget):
         left_panel.addLayout(stock_grid)
 
         #Invested balance, portforlio performance
-        invested_label = QLabel("INVESTED BALANCE: £...")
+        invested_label = QLabel("INVESTED BALANCE: £" + str(invested_balance))
         portfolio_performance_label = QLabel("PERFORMANCE: + x%")
         portfolio_layout = QVBoxLayout()
         portfolio_layout.addWidget(invested_label)
@@ -140,7 +152,14 @@ class displaySimDetails(QWidget):
         self.setLayout(final_layout)
 
         #button actions
+        #stock buttons - trigger displayStock
         self.end_button.clicked.connect(self.endSim)
+
+    def get_stock(self, index: int) -> Stock: 
+        """Get stock object by index."""
+        ticker = self.simulator.get_tickers()[index]
+        Stock = self.simulator.get_stock(ticker)
+        return Stock
 
     def endSim(self):
         self.close()

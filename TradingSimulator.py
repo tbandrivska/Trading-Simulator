@@ -94,7 +94,6 @@ class TradingSimulator:
         self.active_strategies: Dict[str, dict] = {} 
         self.performance_history = [] 
         
-
     def _create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
         for ticker in self.database.getTickers():
@@ -108,17 +107,36 @@ class TradingSimulator:
 
             print("Stock created:" + self.stocks[ticker].get_name())
 
+    #1.5 getter methods
+    def get_tickers(self) -> List[str]:
+        """Get list of all stock tickers in database"""
+        return self.database.getTickers()
+
+    def get_stock(self, ticker: str) -> Stock:
+        """Get Stock object by ticker"""
+        if ticker not in self.stocks:
+            raise ValueError(f"Stock {ticker} not found in portfolio")
+        return self.stocks[ticker]
     
+    def get_sim_id(self) -> str:
+        """Get current simulation ID"""
+        if not self.current_simulation_id:
+            raise ValueError("No simulation ID set")
+        return self.current_simulation_id
+
     # 2 cofiguration - new: sim name, table, start date and reset stocks
-    def new_simulation(self, simulation_id: str, days: int) -> None:
+    def new_simulation(self, simulation_id: str) -> None:
         """Initialize a new simulation with valid ID"""
         if not simulation_id:
             # Generate auto ID if none provided
             simulation_id = f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        self.current_simulation_id = simulation_id
-        self._create_simulation_table()  # Must be called before run!
-        self._reset_all()
+            self.current_simulation_id = simulation_id
+            self._create_simulation_table()  # Must be called before run!
+            self.randomiseStartDate()
+            self._reset_all()
+        else:
+            print(f"Simulation ID '{simulation_id}' already exists.")
 
     def _create_simulation_table(self) -> None:
         """Create table to track daily portfolio changes"""
@@ -156,8 +174,6 @@ class TradingSimulator:
             delta = endDate - startDate
             random_days = timedelta(days=int(delta.days * random.random()))
             self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
-            
-            print(f"Random start date set: {self.start_date.strftime('%Y-%m-%d')}")
 
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
@@ -171,7 +187,6 @@ class TradingSimulator:
         
         self.end_date = end_date.strftime("%Y-%m-%d")
         print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
-
 
     #ignore for now - needs rewriting and debugging
     def loop_dates(self):
@@ -321,7 +336,6 @@ class TradingSimulator:
             portfolio_value = self._get_total_value()
             self.performance_history.append((date, portfolio_value))  
         
-
     def _get_simulation_dates(self) -> List[str]:
         """Get all dates between start and end date from the simulation table"""
         conn = sqlite3.connect('data.db')
@@ -417,7 +431,22 @@ class TradingSimulator:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
     
-
+    def calc_portfolio_performance(self, date) -> float:
+        """Calculate overall portfolio performance as a percentage on a specific date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        #fetch start invested when date = start date and end invested when date = date
+        cursor.execute(f"""
+            SELECT start_invested, end_invested
+            FROM sim_{self.current_simulation_id}
+            WHERE date = ? OR date = ?
+        """, (self.start_date, date))
+        result = cursor.fetchone()
+        conn.close()
+        
+        
+        
+        
       
 
     #test methods to run the simulation
