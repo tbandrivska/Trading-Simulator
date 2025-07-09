@@ -43,15 +43,17 @@ class startWindow(QWidget):
         self.exitButton.clicked.connect(QApplication.quit)
 
     def displaySimDetailsFunc(self):
-        self.display_sim_details_obj = displaySimDetails()
+        self.display_sim_details_obj = displaySimDetails(self)
         self.display_sim_details_obj.show()
+        self.hide()
 
     def displaySimsFunc(self):
         display_sims_obj = displaySims()
 
 class displaySimDetails(QWidget):
-    def __init__(self, current_simulation_id = None):
+    def __init__(self, startWindow, current_simulation_id = None):
         super().__init__()
+        self.startWindow = startWindow
         self.resize(1200, 600)
         self.setWindowTitle("SIMULATION ID: ...")
 
@@ -121,11 +123,11 @@ class displaySimDetails(QWidget):
         right_panel.addLayout(time_layout)
 
         #run/end simulation
-        run_button = QPushButton("RUN SIMULATION")
-        reset_button = QPushButton("END SIMULATION")
+        self.run_button = QPushButton("RUN SIMULATION")
+        self.end_button = QPushButton("END SIMULATION")
         button_layout = QVBoxLayout()
-        button_layout.addWidget(run_button)
-        button_layout.addWidget(reset_button)
+        button_layout.addWidget(self.run_button)
+        button_layout.addWidget(self.end_button)
 
         #final layout
         main_layout = QHBoxLayout()
@@ -136,6 +138,13 @@ class displaySimDetails(QWidget):
         final_layout.addLayout(button_layout)
 
         self.setLayout(final_layout)
+
+        #button actions
+        self.end_button.clicked.connect(self.endSim)
+
+    def endSim(self):
+        self.close()
+        self.startWindow.show()
 
 class displayStock(QWidget):
     def __init__(self, Stock):
