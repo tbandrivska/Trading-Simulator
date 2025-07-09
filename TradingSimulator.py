@@ -161,17 +161,15 @@ class TradingSimulator:
         cursor = conn.cursor()
         
         cursor.execute(f"""
-            CREATE TABLE IF NOT EXISTS sim_{self.current_simulation_id} (
+            CREATE TABLE IF NOT EXISTS {self.current_simulation_id} (
                 date TEXT,
+                ticker TEXT,
                 start_balance REAL,
                 end_balance REAL,
-                ticker TEXT,
-                start_invested REAL,
-                end_invested REAL,
-                start_shares INTEGER,
-                end_shares INTEGER,
-                start_stock_value REAL,
-                end_stock_value REAL,
+                start_number_of_stocks INTEGER,
+                end_number_of_stocks INTEGER,
+                start_investment_value REAL,
+                end_investment_value REAL,
                 PRIMARY KEY (date, ticker)
             )
         """)
@@ -398,23 +396,38 @@ class TradingSimulator:
         if not self.current_simulation_id:
             raise ValueError("Simulation ID not set! Call new_simulation() first")
 
-        for ticker, stock in self.stocks.items():
-            cursor.execute(f"""
-                INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                )
-            """, (
-                date,
-                self.balance.getStartBalance() if phase == "start" else None,
-                self.balance.getCurrentBalance() if phase == "end" else None,
-                self.balance.getTotalInvestedBalance() if phase == "start" else None,
-                self.balance.getTotalInvestedBalance() if phase == "end" else None,
-                ticker,
-                stock.get_number_stocks() if phase == "start" else None,
-                stock.get_number_stocks() if phase == "end" else None,
-                stock.get_current_value() if phase == "start" else None,
-                stock.get_current_value() if phase == "end" else None
-            ))
+        if phase == "start":
+            for ticker, stock in self.stocks.items():
+                cursor.execute(f"""
+                    INSERT OR REPLACE INTO sim_{self.current_simulation_id} VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                """, (
+                    date,
+                    ticker,
+                    self.balance.getCurrentBalance() if phase == "start" else None,
+                    self.balance.getCurrentBalance() if phase == "end" else None,
+                    stock.get_number_stocks() if phase == "start" else None,
+                    stock.get_number_stocks() if phase == "end" else None,
+                    stock.get_invested_balance() if phase == "start" else None,
+                    stock.get_invested_balance() if phase == "end" else None,
+                ))
+        
+        if phase == "end":
+            for ticker, stock in self.stocks.items():
+                cursor.execute(f"""
+                    UPDATE {self.current_simulation_id} 
+                    SET end_balance = ?,
+                        end_number_of_stocks = ?,
+                        end_investment_value = ?
+                    WHERE date = ? AND ticker = ?
+                """, (
+                    self.balance.getCurrentBalance(),
+                    stock.get_number_stocks(),
+                    stock.get_invested_balance(),
+                    date, 
+                    ticker))
+                
 
         try:
             cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='sim_{self.current_simulation_id}'")
