@@ -1,7 +1,8 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
-    QHBoxLayout, QGridLayout, QLineEdit, QGroupBox, QSpinBox
+    QHBoxLayout, QGridLayout, QLineEdit, QGroupBox, QSpinBox,
+    QFormLayout, QSizePolicy, 
 )
 from PySide6.QtCore import Qt
 import sqlite3
@@ -11,7 +12,7 @@ app = QApplication(sys.argv)
 class startWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.resize(1200, 800)
+        self.resize(1200, 600)
         self.setWindowTitle("Start Menu")
 
         #display 3 options in the start menu
@@ -48,101 +49,100 @@ class startWindow(QWidget):
     def displaySimsFunc(self):
         display_sims_obj = displaySims()
 
-
 class displaySimDetails(QWidget):
     def __init__(self, current_simulation_id = None):
         super().__init__()
-        self.resize(1200, 800)
-        self.setWindowTitle("Stock Trading Simulator")
+        self.resize(1200, 600)
+        self.setWindowTitle("SIMULATION ID: ...")
 
-        # === TOP BAR ===
-        #Total balance
+        #Total Balance and Cash Balance
         total_balance_label = QLabel("TOTAL BALANCE: £...")
-        #Cash balance
-        balance_label = QLabel("BALANCE: £...")
+        cash_balance_label = QLabel("CASH BALANCE: £...")
 
-        top_bar = QVBoxLayout()
-        top_bar.addWidget(total_balance_label)
-        top_bar.addWidget(balance_label)
+        balance_layout = QVBoxLayout()
+        balance_layout.addWidget(total_balance_label)
+        balance_layout.addWidget(cash_balance_label)
 
-        # === STOCK TABLE ===
-         #stock name, performannce, value (x10)
+        #Stock tabel: name, performannce, value
             #stock name is a button - trigger displayStock
         stock_grid = QGridLayout()
-        for i in range(10):
-            stock_label = QLabel(f"STOCK {i+1}")
-            change_label = QLabel("± x%")
+        for i in range(4):
+            if i%2 == 0:
+                stock_grid.setColumnMinimumWidth(i,90)
+            else:
+                stock_grid.setColumnMinimumWidth(i,60)
+        for i in range(5):
+            stock_grid.setRowMinimumHeight(i,60)
+
+        for i in range(10): #change to loop through tickers???
+            stock_button = QPushButton(f"STOCK {i+1}")
+            stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            performance_label = QLabel("± x%")
+            #performance_label.setStyleSheet("border: 1px solid gray")
             value_label = QLabel("£....")
-            stock_grid.addWidget(stock_label, i, 0)
-            stock_grid.addWidget(change_label, i, 1)
-            stock_grid.addWidget(value_label, i, 2)
+            #value_label.setStyleSheet("border: 1px solid gray")
 
-        stock_group = QGroupBox()
-        stock_group.setLayout(stock_grid)
+            stock_details = QVBoxLayout()
+            stock_details.addWidget(value_label)
+            stock_details.addWidget(performance_label)
 
-        # === GRAPH + STATS SECTION ===
-        #invested balance
+            if(i<5):
+                stock_grid.addWidget(stock_button,i,0)
+                stock_grid.addLayout(stock_details,i,1)
+            else:
+                stock_grid.addWidget(stock_button,(i-5),2)
+                stock_grid.addLayout(stock_details,(i-5),3)
+
+        #display balances and stocks on the LHS
+        left_panel = QVBoxLayout()
+        left_panel.addLayout(balance_layout)
+        left_panel.addLayout(stock_grid)
+
+        #Invested balance, portforlio performance
         invested_label = QLabel("INVESTED BALANCE: £...")
-        #portfolio perfomance
-        performance_label = QLabel("PERFORMANCE: + x%")
+        portfolio_performance_label = QLabel("PERFORMANCE: + x%")
+        portfolio_layout = QVBoxLayout()
+        portfolio_layout.addWidget(invested_label)
+        portfolio_layout.addWidget(portfolio_performance_label)
+
+        #placeholder for graph
         graph_placeholder = QLabel()
-        graph_placeholder.setFixedSize(250, 200)
+        graph_placeholder.setFixedSize(800, 400)
         graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
 
-        #display graph
-        graph_layout = QVBoxLayout()
-        graph_layout.addWidget(invested_label)
-        graph_layout.addWidget(performance_label)
-        graph_layout.addWidget(graph_placeholder)
+        #time input
+        time_layout = QFormLayout()
+        time_layout.addRow("ENTER RUN TIME (DAYS): ", QLineEdit())
 
-        # === TIME INPUTS ===
-        #"select run time"
-            #number
-            #days, months, years
-        time_layout = QHBoxLayout()
-        time_label = QLabel("SELECT RUN TIME")
-        months_input = QSpinBox()
-        days_input = QSpinBox()
-        months_input.setPrefix("Months: ")
-        days_input.setPrefix("Days: ")
-        time_layout.addWidget(time_label)
-        time_layout.addWidget(months_input)
-        time_layout.addWidget(days_input)
+        #display balance, performance, graph and time input on the RHS
+        right_panel = QVBoxLayout()
+        right_panel.addLayout(portfolio_layout)
+        right_panel.addWidget(graph_placeholder)
+        right_panel.addLayout(time_layout)
 
-        # === BUTTONS ===
-        #run simulation
-        #exit simulation
+        #run/end simulation
         run_button = QPushButton("RUN SIMULATION")
-        reset_button = QPushButton("RESET SIMULATION")
-
+        reset_button = QPushButton("END SIMULATION")
         button_layout = QVBoxLayout()
-        button_layout.addLayout(time_layout)
         button_layout.addWidget(run_button)
         button_layout.addWidget(reset_button)
 
-        # === RIGHT SIDE COMBINED ===
-        right_side = QVBoxLayout()
-        right_side.addLayout(graph_layout)
-        right_side.addLayout(button_layout)
-
-        # === MAIN LAYOUT ===
+        #final layout
         main_layout = QHBoxLayout()
-        left_panel = QVBoxLayout()
-        left_panel.addLayout(top_bar)
-        left_panel.addWidget(stock_group)
         main_layout.addLayout(left_panel)
-        main_layout.addLayout(right_side)
+        main_layout.addLayout(right_panel)
+        final_layout = QVBoxLayout()
+        final_layout.addLayout(main_layout)
+        final_layout.addLayout(button_layout)
 
-        self.setLayout(main_layout)
-        #window.show()
-        #sys.exit(app.exec())
+        self.setLayout(final_layout)
 
 class displayStock(QWidget):
     def __init__(self, Stock):
         super().__init__()
-        self.resize(1200, 800)
+        self.resize(1200, 600)
         #change so it takes the stock name as title
-        self.setWindowTitle(...)
+        self.setWindowTitle('...')
     
         #stock name
         #performance (is this the same as gain/loss or...?)
@@ -171,7 +171,7 @@ class displayStock(QWidget):
 class displaySims(QWidget):
     def __init__(self):
         super().__init__()
-        self.resize(1200, 800)
+        self.resize(1200, 600)
         self.setWindowTitle("Previous Simulations")
 
         layout = QVBoxLayout()
@@ -195,11 +195,11 @@ class displaySims(QWidget):
 
         return sim_names
 
-    def display_sim_names(self):
-        for name in self.sim_names:
-            button = QPushButton(name)
-            button.clicked.connect(lambda checked=False, n=name: self.runSim(...)) #change when runSim is sorted
-            self.layout.addWidget(button)
+    # def display_sim_names(self):
+    #     for name in self.sim_names:
+    #         button = QPushButton(name)
+    #         button.clicked.connect(lambda checked=False, n=name: self.runSim(...)) #change when runSim is sorted
+    #         self.layout.addWidget(button)
 
 
 # Test function
