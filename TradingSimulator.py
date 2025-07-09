@@ -127,16 +127,33 @@ class TradingSimulator:
     # 2 cofiguration - new: sim name, table, start date and reset stocks
     def new_simulation(self, simulation_id: str) -> None:
         """Initialize a new simulation with valid ID"""
+        # Generate auto ID if none provided
         if not simulation_id:
-            # Generate auto ID if none provided
-            simulation_id = f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+            simulation_id = self.generate_simulation_id()
             self.current_simulation_id = simulation_id
             self._create_simulation_table()  # Must be called before run!
             self.randomiseStartDate()
             self._reset_all()
-        else:
-            print(f"Simulation ID '{simulation_id}' already exists.")
+
+    def generate_simulation_id(self) -> str:
+        """Generate a unique simulation ID"""
+        todays_date = datetime.now().strftime("%Y%m%d")
+        Bool = True
+        while Bool:
+            number = str(random.randint(100, 999))
+            ID = f"sim_{todays_date}_{number}"
+
+            # Check if ID already exists in database
+            conn = sqlite3.connect('data.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (ID,))
+            exists = cursor.fetchone() is not None
+            conn.close()
+            if exists:
+                Bool = True
+            else:
+                Bool = False
+        return ID
 
     def _create_simulation_table(self) -> None:
         """Create table to track daily portfolio changes"""
@@ -446,7 +463,7 @@ class TradingSimulator:
         
         
         
-        
+
       
 
     #test methods to run the simulation
