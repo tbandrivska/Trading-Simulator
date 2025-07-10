@@ -58,7 +58,11 @@ class displaySimDetails(QWidget):
         super().__init__()
         self.startWindow = startWindow
         self.simulator = self.startWindow.simulator 
-        self.simulator.new_simulation(current_simulation_id)  # Start a new simulation if ID is not provided
+        if current_simulation_id is None:
+            self.simulator.new_simulation()
+        else:
+            #self.simulator.load_simulation(current_simulation_id)
+            ...
         
         self.resize(1200, 600)
         self.setWindowTitle("SIMULATION ID: " + self.simulator.get_sim_id())
@@ -91,6 +95,8 @@ class displaySimDetails(QWidget):
             stock_name = Stock.get_name()
             stock_button = QPushButton(stock_name)
             stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+            stock_button.clicked.connect(lambda _, index=i: self.displayStockFunc(Stock))
 
             stock_performance = Stock.get_current_performance()
             performance_label = QLabel(str(stock_performance) + "%")
@@ -160,6 +166,12 @@ class displaySimDetails(QWidget):
         ticker = self.simulator.get_tickers()[index]
         Stock = self.simulator.get_stock(ticker)
         return Stock
+    
+    def displayStockFunc(self, Stock):
+        """Display stock details in a new window."""
+        self.stock_display = displayStock(Stock)
+        self.stock_display.show()
+        self.hide()
 
     def endSim(self):
         self.close()
@@ -168,9 +180,9 @@ class displaySimDetails(QWidget):
 class displayStock(QWidget):
     def __init__(self, Stock):
         super().__init__()
+        self.Stock = Stock
         self.resize(1200, 600)
-        #change so it takes the stock name as title
-        self.setWindowTitle('...')
+        self.setWindowTitle(self.Stock.get_name())
     
         #stock name
         #performance (is this the same as gain/loss or...?)
