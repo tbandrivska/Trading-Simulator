@@ -36,24 +36,32 @@ class startWindow(QWidget):
         self.setLayout(hLayout)
 
         #button actions
-        self.newSimButton.clicked.connect(self.displaySimDetailsFunc)
-        #self.prevSimButton.clicked.connect(self.displaySimsFunc)
+        self.newSimButton.clicked.connect(lambda: self.displaySimDetailsFunc(None))
+        self.prevSimButton.clicked.connect(self.displaySimsFunc)
         self.exitButton.clicked.connect(QApplication.quit)
 
-    def displaySimDetailsFunc(self):
-        self.display_sim_details_obj = displaySimDetails(self, None)
+    def displaySimDetailsFunc(self, sim_id):
+        self.display_sim_details_obj = displaySimDetails(self, sim_id)
         self.display_sim_details_obj.show()
         self.hide()
 
     def displaySimsFunc(self):
-        display_sims_obj = displaySims()
+        display_sims_obj = displaySims(self)
+        display_sims_obj.show()
+        self.hide()
+
+    def backToStartWindow(self, currentWindow):
+        """Close the current window and return to the start window."""
+        currentWindow.close()
+        self.show()
+
 
 class displaySimDetails(QWidget):
-    def __init__(self, startWindow, current_simulation_id = None):
+    def __init__(self, startWindow, sim_id):
         super().__init__()
         self.startWindow = startWindow
         self.simulator = self.startWindow.simulator 
-        if current_simulation_id is None:
+        if sim_id is None:
             self.simulator.new_simulation()
         else:
             #self.simulator.load_simulation(current_simulation_id)
@@ -153,7 +161,8 @@ class displaySimDetails(QWidget):
         self.setLayout(final_layout)
 
         #button actions
-        self.end_button.clicked.connect(self.endSim)
+        self.end_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
+
 
     def get_stock(self, index: int) -> Stock: 
         """Get stock object by index."""
@@ -167,9 +176,6 @@ class displaySimDetails(QWidget):
         self.stock_display.show()
         self.hide()
 
-    def endSim(self):
-        self.close()
-        self.startWindow.show()
 
 class displayStock(QWidget):
     def __init__(self, simWindow, simulator, Stock):
@@ -307,18 +313,34 @@ class displayStrategies(QWidget):
     n = None
 
 class displaySims(QWidget):
-    def __init__(self):
+    def __init__(self, startWindow):
         super().__init__()
+        self.startWindow = startWindow
         self.resize(1200, 600)
         self.setWindowTitle("Previous Simulations")
 
+        #display all the simulations
         layout = QVBoxLayout()
-        self.sim_names = self.get_sim_names()
-        self.display_sim_names()
-        self.setLayout(layout)
+        #loop through all the simulations and display their names
+        self.sim_IDS = self.get_sim_IDS()
+        for sim_id in self.sim_IDS:
+            button = QPushButton(sim_id)
+            button.setFixedSize(200, 40)
+            button.clicked.connect(lambda checked=False, n=sim_id: self.startWindow.displaySimDetailsFunc(sim_id))
+            layout.addWidget(button)
 
-    #get the names of all the simulations
-    def get_sim_names(self):
+        #back button
+        back_button = QPushButton("GO BACK")
+        back_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
+        layout.addWidget(back_button)
+
+        #set the layout
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(layout)
+        self.setLayout(main_layout)
+
+    def get_sim_IDS(self):
+        """Fetch simulation IDs from the database."""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
@@ -329,15 +351,13 @@ class displaySims(QWidget):
         for sim in sims:
             sim_names.append(sim[0])
 
+        #remove historical data table
+        if "historicalData" in sim_names:
+            sim_names.remove("historicalData")
+        
         conn.close()
-
         return sim_names
 
-    def display_sim_names(self):
-        for name in self.sim_names:
-            button = QPushButton(name)
-            button.clicked.connect(lambda checked=False, n=name: self.runSim(...)) #change when runSim is sorted
-            self.layout.addWidget(button)
 
 
 # Test function
