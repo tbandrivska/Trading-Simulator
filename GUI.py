@@ -9,43 +9,18 @@ import sqlite3
 from Stock import Stock
 from TradingSimulator import TradingSimulator
 
-app = QApplication(sys.argv)
-
-class loadingWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.resize(1200, 600)
-        self.setWindowTitle("Loading")
-        
-        load_layout = QVBoxLayout()
-        loading_label = QLabel("...LOADING...")
-        load_layout.addWidget(loading_label)
-        self.setLayout(load_layout)
-        self.show()
-
-        QTimer.singleShot(100, self.load_simulator)
-
-    def load_simulator(self):
-        self.simulator = TradingSimulator(10000)
-        self.startWindow = startWindow(self.simulator)
-        self.startWindow.show()
-        self.close()
 
 class startWindow(QWidget):
-    def __init__(self, simulator):
+    def __init__(self):
         super().__init__()
-        self.simulator = simulator  #Initialise simulator with a default balance
+        self.simulator = TradingSimulator(10000)  #Initialise simulator with a default balance
         self.resize(1200, 600)
         self.setWindowTitle("Start Menu")
 
-        #display 3 options in the start menu
-        #1 - new simulation
+        #display 3 options in the start menu - new simulation, continue a previous simulation, exit app
         self.newSimButton = QPushButton("New Simulation")
-        #2 - continue a previous simulation
         self.prevSimButton = QPushButton("Previous Simulations")
-        #3 - exit
         self.exitButton = QPushButton("Exit")
-        #4 - dispaly all simulation performance levels (optional)
 
         #size the buttons
         for button in [self.newSimButton, self.prevSimButton, self.exitButton]:
@@ -370,6 +345,6 @@ if __name__ == "__main__":
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
-    window = loadingWindow()
+    window = startWindow()
     window.show()
     sys.exit(app.exec())
