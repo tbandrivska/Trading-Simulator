@@ -2,19 +2,40 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
     QHBoxLayout, QGridLayout, QLineEdit, QGroupBox, QSpinBox,
-    QFormLayout, QSizePolicy, 
+    QFormLayout, QSizePolicy
 )
-from PySide6.QtCore import QRect, Qt
+from PySide6.QtCore import Qt, QTimer
 import sqlite3
 from Stock import Stock
 from TradingSimulator import TradingSimulator
 
 app = QApplication(sys.argv)
 
-class startWindow(QWidget):
+class loadingWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.simulator = TradingSimulator(10000)  #Initialise simulator with a default balance
+        self.resize(1200, 600)
+        self.setWindowTitle("Loading")
+        
+        load_layout = QVBoxLayout()
+        loading_label = QLabel("...LOADING...")
+        load_layout.addWidget(loading_label)
+        self.setLayout(load_layout)
+        self.show()
+
+        QTimer.singleShot(100, self.load_simulator)
+
+    def load_simulator(self):
+        self.simulator = TradingSimulator(10000)
+        self.startWindow = startWindow(self.simulator)
+        self.startWindow.show()
+        self.close()
+
+
+class startWindow(QWidget):
+    def __init__(self, simulator):
+        super().__init__()
+        self.simulator = simulator  #Initialise simulator with a default balance
         self.resize(1200, 600)
         self.setWindowTitle("Start Menu")
 
@@ -42,7 +63,7 @@ class startWindow(QWidget):
 
         #button actions
         self.newSimButton.clicked.connect(self.displaySimDetailsFunc)
-        #self.prevSimButton.clicked.connect(self.displaySimsFunc())
+        #self.prevSimButton.clicked.connect(self.displaySimsFunc)
         self.exitButton.clicked.connect(QApplication.quit)
 
     def displaySimDetailsFunc(self):
@@ -158,7 +179,6 @@ class displaySimDetails(QWidget):
         self.setLayout(final_layout)
 
         #button actions
-        #stock buttons - trigger displayStock
         self.end_button.clicked.connect(self.endSim)
 
     def get_stock(self, index: int) -> Stock: 
@@ -169,7 +189,7 @@ class displaySimDetails(QWidget):
     
     def displayStockFunc(self, Stock):
         """Display stock details in a new window."""
-        self.stock_display = displayStock(Stock)
+        self.stock_display = displayStock(self, self.simulator, Stock)
         self.stock_display.show()
         self.hide()
 
@@ -178,35 +198,91 @@ class displaySimDetails(QWidget):
         self.startWindow.show()
 
 class displayStock(QWidget):
-    def __init__(self, Stock):
+    def __init__(self, simWindow, simulator, Stock):
         super().__init__()
+        self.simWindow = simWindow
+        self.simulator = simulator
         self.Stock = Stock
+
         self.resize(1200, 600)
         self.setWindowTitle(self.Stock.get_name())
-    
+
+        #LHS Panel
+        left_panel = QVBoxLayout()
+
         #stock name
-        #performance (is this the same as gain/loss or...?)
-        #plot graph
+        stock_name_label = QLabel(self.Stock.getName())
+        left_panel.addWidget(stock_name_label)
 
+        #placeholder for graph
+        graph_placeholder = QLabel()
+        graph_placeholder.setFixedSize(500, 500)
+        graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
+        left_panel.addWidget(graph_placeholder)
+
+        #stock details
+        stock_details_grid = QGridLayout()
         #initial investment value
+        invested_title_label = QLabel("CASH INVESTED")
+        invested_label = QLabel(str("£" + self.Stock.get_invested_balance()))
+        stock_details_grid.addWidget(invested_title_label,0,0)
+        stock_details_grid.addWidget(invested_label,1,0)
         #current investment value
-        #gain/loss (%)
+        current_value_title_label = QLabel("CURRENT INVESTMENT VALUE")
+        current_value_label = QLabel("£" + str(self.Stock.get_current_value()))
+        stock_details_grid.addWidget(current_value_title_label,0,1)
+        stock_details_grid.addWidget(current_value_label,1,1)
+        #investment performance
+        performance_title_label = QLabel("INVESTMENT PERFORMANCE")
+        performance_label = QLabel(str(self.Stock.get_investment_performance()) + "%")
+        stock_details_grid.addWidget(performance_title_label,0,2)
+        stock_details_grid.addWidget(performance_label,1,2)
+        #Stock performance 
+        stock_performance_title_label = QLabel("STOCK PERFORMANCE")
+        stock_performance_label = QLabel(str(self.Stock.get_current_performance()) + "%")
+        stock_details_grid.addWidget(stock_performance_title_label,0,3)
+        stock_details_grid.addWidget(stock_performance_label,1,3)
 
-        #cash balance
-        #num of stock
+        left_panel.addLayout(stock_details_grid)
 
-        #"purchase/sell/trade"
-        # num of stock
-        # cost
-        # balance after
-        # "confirm purchase"
-            #trigger display stock
+        #RHS Panel
+        right_panel = QVBoxLayout()
+
+        #status bar - cash balance, number of stocks
+        status_bar = QVBoxLayout()
+        cash_balance_label = QLabel("CASH BALANCE: £" + str(self.simulator.balance.getCurrentBalance()))
+        num_stocks_label = QLabel("NUMBER OF STOCKS OWNED: " + str(self.Stock.get_number_stocks()))
+        status_bar.addWidget(cash_balance_label)
+        status_bar.addWidget(num_stocks_label)
+        right_panel.addLayout(status_bar)
+
+        #trade bar - num of stock, price of stock, balance after purchase, trade confirmation
+       
+        
+        
 
         #implement trading strategies - trigger displayStrategies
+        self.trading_strat_button = QPushButton("IMPLEMENT TRADING STRATEGIES")
+        right_panel.addWidget(self.trading_strat_button)
+        #self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
 
         #end trade
-    
-#class displayStrategies(QWidget):
+        self.end_trade_button = QPushButton("END TRADE")
+        right_panel.addWidget(self.end_trade_button)
+        self.end_trade_button.clicked.connect(self.endTrade)
+
+    def displayStrategiesFunc(self):
+        self.display_strategies_obj = displayStrategies(self)
+        self.display_strategies_obj.show()
+        self.hide()
+
+    def endTrade(self):
+        self.close()
+        self.simWindow.show()
+
+
+class displayStrategies(QWidget):
+    n = None
 
 class displaySims(QWidget):
     def __init__(self):
@@ -235,11 +311,11 @@ class displaySims(QWidget):
 
         return sim_names
 
-    # def display_sim_names(self):
-    #     for name in self.sim_names:
-    #         button = QPushButton(name)
-    #         button.clicked.connect(lambda checked=False, n=name: self.runSim(...)) #change when runSim is sorted
-    #         self.layout.addWidget(button)
+    def display_sim_names(self):
+        for name in self.sim_names:
+            button = QPushButton(name)
+            button.clicked.connect(lambda checked=False, n=name: self.runSim(...)) #change when runSim is sorted
+            self.layout.addWidget(button)
 
 
 # Test function
@@ -247,6 +323,6 @@ if __name__ == "__main__":
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
-    window = startWindow()
+    window = loadingWindow()
     window.show()
     sys.exit(app.exec())

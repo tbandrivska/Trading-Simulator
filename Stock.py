@@ -5,9 +5,10 @@ class Stock:
     def __init__(self, name: str, ticker: str, opening_value: float, opening_performance: float = 0.0):
         self.name = name 
         self.ticker = ticker         
-        self.invested_balance = 0.0
+        self.cash_invested = 0.0
         self.opening_value = opening_value
-        self.current_value = opening_value  # Starts at the same value as an opening one
+        self.current_value = opening_value
+        self.investment_value = self.cash_invested * self.current_value
         self.opening_performance = opening_performance
         self.current_performance = self.update_performance()
         self.number_stocks = 0
@@ -17,8 +18,9 @@ class Stock:
         return (
             f"Stock(name={self.name}, "
             f"shares={self.number_stocks}, "
-            f"invested={self.invested_balance:.2f}, "
+            f"cash_invested={self.cash_invested:.2f}, "
             f"current_value={self.current_value:.2f}, "
+            f"investment_value={self.investment_value:.2f}, "
             f"performance={self.current_performance:.2f}%)"
         )
 
@@ -26,8 +28,8 @@ class Stock:
     # Getters
     def get_name(self) -> str:
         return self.name
-    def get_invested_balance(self) -> float:
-        return self.invested_balance
+    def get_cash_invested(self) -> float:
+        return self.cash_invested
     def get_opening_value(self) -> float:
         return self.opening_value
     def get_current_value(self) -> float:                         
@@ -39,13 +41,13 @@ class Stock:
     def get_number_stocks(self) -> int:
         return self.number_stocks
     def get_ticker(self) -> str:
-        return self.ticker
+        return self.ticker     
 
 
     # I have added setters with input valisation for it to make sense
-    def set_invested_balance(self, value: float):
+    def set_cash_invested(self, value: float):
         if value >= 0:
-            self.invested_balance = value
+            self.cash_invested = value
         else:
             raise ValueError("Invested balance cannot be negative.")
         
@@ -64,7 +66,7 @@ class Stock:
    
     def initialise_stock(self, opening_value:float) -> None:
         """Reset the stock instance variables and set opening and current value."""
-        self.invested_balance = 0.0
+        self.cash_invested = 0.0
         self.opening_value = opening_value
         self.current_value = opening_value
         self.opening_performance = 0.0
@@ -79,6 +81,12 @@ class Stock:
             return 0.0
         return (current - opening) / opening
 
+    def get_investment_performance(self) -> float:
+        """Calculate the performance of the investment using invested balance and  investment value."""
+        if self.cash_invested == 0:
+            return 0.0
+        return ((self.investment_value - self.cash_invested)/ self.cash_invested) * 100
+    
     #methods for fetching historical data from the database
     @staticmethod
     def fetchDates(startDate, endDate, ticker: str) -> list[str]:
@@ -172,7 +180,7 @@ class Stock:
 
         # update the invested balance based on the number of stocks and current value
         invested_balance: float = self.get_number_stocks() * current_value
-        self.set_invested_balance(invested_balance)
+        self.set_cash_invested(invested_balance)
 
 
 

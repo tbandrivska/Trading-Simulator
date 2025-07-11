@@ -459,8 +459,8 @@ class TradingSimulator:
                     self.balance.getCurrentBalance() if phase == "end" else None,
                     stock.get_number_stocks() if phase == "start" else None,
                     stock.get_number_stocks() if phase == "end" else None,
-                    stock.get_invested_balance() if phase == "start" else None,
-                    stock.get_invested_balance() if phase == "end" else None,
+                    stock.get_cash_invested() if phase == "start" else None,
+                    stock.get_cash_invested() if phase == "end" else None,
                 ))
         
         if phase == "end":
@@ -474,7 +474,7 @@ class TradingSimulator:
                 """, (
                     self.balance.getCurrentBalance(),
                     stock.get_number_stocks(),
-                    stock.get_invested_balance(),
+                    stock.get_cash_invested(),
                     date, 
                     ticker))   
 

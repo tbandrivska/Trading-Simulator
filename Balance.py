@@ -36,6 +36,7 @@ class Balance:
         if self.currentBalance >= price:
             self.currentBalance -= price
             self.totalInvestedBalance += price
+            Stock.set_cash_invested(Stock.get_cash_invested() + price)
             Stock.set_number_stocks(Stock.get_number_stocks() + amount)
             return True
         else:
@@ -48,6 +49,7 @@ class Balance:
             price = Stock.get_current_value() * amount
             self.currentBalance += price
             self.totalInvestedBalance -= price
+            Stock.set_cash_invested(Stock.get_cash_invested() - price)
             Stock.set_number_stocks(Stock.get_number_stocks() - amount)
             return True
         else:
