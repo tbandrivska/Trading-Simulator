@@ -132,8 +132,9 @@ class TradingSimulator:
         simulation_id = self.generate_simulation_id()
         self.current_simulation_id = simulation_id
         self._create_simulation_table()  # Must be called before run!
+        self.record_day_zero(simulation_id)  # Record initial state
         self.randomiseStartDate()
-        self._reset_all()
+        self.reset_all(self.start_date)
 
     def generate_simulation_id(self) -> str:
         """Generate a unique simulation ID"""
@@ -156,25 +157,50 @@ class TradingSimulator:
         return ID
 
     def _create_simulation_table(self) -> None:
-        """Create table to track daily portfolio changes"""
+        """Create table to track daily balance and stock changes"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
         
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.current_simulation_id} (
                 date TEXT,
+                current_balance REAL,
+                total_invested_balance REAL,
                 ticker TEXT,
-                start_balance REAL,
-                end_balance REAL,
-                start_number_of_stocks INTEGER,
-                end_number_of_stocks INTEGER,
-                start_investment_value REAL,
-                end_investment_value REAL,
-                PRIMARY KEY (date, ticker)
+                cash_invested REAL,
+                investment_value REAL,
+                current_performance REAL,
+                number_of_stocks INTEGER,
+                PRIMARY KEY (date, ticker, current_balance, total_invested_balance)
             )
         """)
         conn.commit()
         conn.close()  
+
+    def record_day_zero(self, simulation_id) -> None:
+        """Record initial state of stocks and balance at the start of the simulation"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        for ticker, stock in self.stocks.items():
+            cursor.execute(f"""
+                INSERT INTO {simulation_id} 
+                (date, ticker, current_balance, total_invested_balance, cash_invested,
+                  investment_value, current_performance, number_of_stocks)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                self.start_date,
+                self.balance.getCurrentBalance(),
+                self.balance.getTotalInvestedBalance(),
+                ticker,
+                stock.get_cash_invested(),
+                stock.get_investment_value(),
+                stock.get_current_performance(),
+                stock.get_number_stocks()
+            ))
+        
+        conn.commit()
+        conn.close()
 
     def randomiseStartDate(self) -> None:
             """Set a random start date within the available historical data"""
@@ -190,11 +216,10 @@ class TradingSimulator:
             random_days = timedelta(days=int(delta.days * random.random()))
             self.start_date = startDate + random_days + timedelta(days=1)  # Add one day to avoid starting on the first day of data
 
-    def _reset_all(self) -> None:
+    def reset_all(self, date) -> None:
         """Reset stocks and balance to initial state"""
         for stock in self.stocks.values():
-            start_value:float = Stock.fetchOpeningValue(stock.get_ticker(), self.start_date)
-            stock.initialise_stock(start_value)
+            stock.initialise_stock(date)
         self.balance.resetBalance(self.start_balance)
     
 
@@ -210,8 +235,31 @@ class TradingSimulator:
         
         #set simulation ID
         self.current_simulation_id = sim_id
+
         #set new start date to the last date in the simulation
-        #set balance
+        cursor.execute(f"SELECT date FROM {sim_id} ORDER BY date DESC LIMIT 1")
+        last_date = cursor.fetchone()
+        if not last_date:
+            raise ValueError(f"No data found for simulation {sim_id}")
+        self.start_date = last_date[0]
+
+        #set start balance to first balance and current balance to the last balance in the simulation
+        cursor.execute(f"""
+            SELECT start_balance FROM {sim_id} ORDER BY date ASC LIMIT 1
+        """)
+        first_balance = cursor.fetchone()
+        if not first_balance:
+            raise ValueError(f"No balance data found for simulation {sim_id}")
+        self.balance.setStartBalance(first_balance[0])
+        
+        cursor.execute(f"""
+            SELECT end_balance FROM {sim_id} ORDER BY date DESC LIMIT 1
+        """)
+        last_balance = cursor.fetchone()
+        if not last_balance:
+            raise ValueError(f"No balance data found for simulation {sim_id}")
+        self.balance.setCurrentBalance(last_balance[0])
+
         #set stocks
         
     def load_stock_data(self, sim_id: str, ticker: str):
@@ -246,6 +294,7 @@ class TradingSimulator:
         
         return stock_data
     
+
     # 2.3 configuration - timeframe
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
@@ -259,7 +308,6 @@ class TradingSimulator:
         
         self.end_date = end_date.strftime("%Y-%m-%d")
         print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
-
         
     def _validate_dates(self, start: str, end: str) -> bool:
         """Check if dates exist in database"""
