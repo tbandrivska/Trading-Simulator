@@ -1,3 +1,5 @@
+import sqlite3
+
 class Balance:
     #initialising the instance variables
     def __init__(self, startBalance:float):
@@ -61,4 +63,61 @@ class Balance:
         self.startBalance = start_balance
         self.currentBalance = start_balance
         self.totalInvestedBalance = 0
-           
+
+    def set_balance_from_sim(self, simulation_id: str) -> None:
+        """Set the balance instance variables based on the the first and last date in the simulation data."""
+        start_date = Balance.get_start_and_end_dates(simulation_id)[0]
+        end_date = Balance.get_start_and_end_dates(simulation_id)[1]
+        
+        conn = sqlite3.connect('simulation_data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT current_balance, total_invested_balance
+            FROM simulationData
+            WHERE simulation_id = ? AND date = ?
+        """, (simulation_id, start_date))
+
+        data = cursor.fetchone()
+        conn.close()    
+
+        if not data:
+            raise ValueError(f"No simulation data found for ID {simulation_id} on {start_date}")
+        
+        self.startBalance = data[0]
+
+        conn = sqlite3.connect('simulation_data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT current_balance, total_invested_balance
+            FROM simulationData
+            WHERE simulation_id = ? AND date = ?
+        """, (simulation_id, end_date))
+
+        data = cursor.fetchone()
+        conn.close()
+
+        if not data:
+            raise ValueError(f"No simulation data found for ID {simulation_id} on {end_date}")
+        
+        self.currentBalance = data[0]
+        self.totalInvestedBalance = (data[1])
+
+    #copy and pasted from Stock.py - maybe should be moved to a common utility module    
+    @staticmethod
+    def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
+        """Fetch the start and end dates of the simulation."""
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MIN(date), MAX(date)
+            FROM simulationData
+            WHERE simulation_id = ?
+        """, (simulation_id,))
+        dates = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not dates or not all(dates):
+            raise ValueError(f"No valid dates found for simulation ID {simulation_id}")
+        
+        return dates[0], dates[1]    

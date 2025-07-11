@@ -88,13 +88,13 @@ class TradingSimulator:
         self.strategies = TradingStrategies(self.balance)
         
         self.stocks: Dict[str, Stock] = {}  # {ticker: Stock}
-        self._create_stocks()
+        self.create_stocks()
 
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
         self.performance_history = [] 
         
-    def _create_stocks(self) -> None:
+    def create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
         for ticker in self.database.getTickers():
             # Get opening price from simulation start date
@@ -243,56 +243,12 @@ class TradingSimulator:
             raise ValueError(f"No data found for simulation {sim_id}")
         self.start_date = last_date[0]
 
-        #set start balance to first balance and current balance to the last balance in the simulation
-        cursor.execute(f"""
-            SELECT start_balance FROM {sim_id} ORDER BY date ASC LIMIT 1
-        """)
-        first_balance = cursor.fetchone()
-        if not first_balance:
-            raise ValueError(f"No balance data found for simulation {sim_id}")
-        self.balance.setStartBalance(first_balance[0])
+        #set balance
+        self.balance.set_balance_from_sim(sim_id)
         
-        cursor.execute(f"""
-            SELECT end_balance FROM {sim_id} ORDER BY date DESC LIMIT 1
-        """)
-        last_balance = cursor.fetchone()
-        if not last_balance:
-            raise ValueError(f"No balance data found for simulation {sim_id}")
-        self.balance.setCurrentBalance(last_balance[0])
-
-        #set stocks
-        
-    def load_stock_data(self, sim_id: str, ticker: str):
-        '''Fetch stock data for a specific simulation ID and ticker'''
-        # Connect to the database
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()  
-        # find the last date in the simulation
-        cursor.execute(f"""
-            SELECT date FROM {sim_id} 
-            WHERE ticker = ? 
-            ORDER BY date DESC LIMIT 1
-        """, (ticker,))
-        last_date = cursor.fetchone()
-        
-        if not last_date:
-            raise ValueError(f"No data found for {ticker} in simulation {sim_id}")
-        
-        last_date = last_date[0]
-        
-        # Fetch stock data for the last date
-        cursor.execute(f"""
-            SELECT * FROM historicalData 
-            WHERE stock_ticker = ? AND date = ?
-        """, (ticker, last_date))
-        
-        stock_data = cursor.fetchone()
-        conn.close()
-        
-        if not stock_data:
-            raise ValueError(f"No historical data found for {ticker} on {last_date}")
-        
-        return stock_data
+        #loop through stocks and set their values based on the simulation ID
+        for Stock in self.stocks.values():
+            Stock.set_stock_from_simulation(sim_id)
     
 
     # 2.3 configuration - timeframe
@@ -552,8 +508,8 @@ class TradingSimulator:
             return
             #add better exception handling here
         if new_simulation:
-            new_id = f"sim_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            self.new_simulation(new_id, days)
+            self.new_simulation()
+            self.set_timeframe(days)
         else:
             print("Simulation ended. Final portfolio value:", self._get_total_value())
             self.plot_performance()
@@ -581,12 +537,13 @@ class TradingSimulator:
         """Run a test simulation with random parameters"""
         # 1 initialisation of startdate and stocks
         self.randomiseStartDate()
-        self._create_stocks()
+        self.create_stocks()
         print("phase 1 complete: Stocks created and start date set.")
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
         # 2 cofiguration
         self.new_simulation()
+        #self.load_previous_simulation('sim_20231001_123')
         self.set_timeframe(30)
         print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # 3 simulation setup (purchase stocks and set strategies)

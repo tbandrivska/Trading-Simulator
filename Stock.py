@@ -139,7 +139,7 @@ class Stock:
         """calculate the opening performance of the stock 
         based on historical data within the simulation time range."""
         
-        startDate = self.get_start_and_end_dates('historicalData')[0]
+        startDate = Stock.get_start_and_end_dates('historicalData')[0]
         
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
@@ -156,10 +156,11 @@ class Stock:
         conn.close()
 
         if not data:
-            raise ValueError(f"No historical data found for {ticker} between {startDate} and {endDate}")
+            raise ValueError(f"No historical data found for {ticker} between {startDate} and {date}")
 
         opening_value = data[0][0]
         closing_value = data[-1][1] 
+        
         if opening_value == 0:
             return 0.0
         return ((closing_value - opening_value) / opening_value) * 100.0
@@ -216,7 +217,6 @@ class Stock:
 
 
     #methods for setting stock instance variables from a simulation
-    #set the stock instance variables to their values from a specified simulation, on the latest date
     def set_stock_from_simulation(self, simulation_id) -> None:
         """Set the stock instance variables based on the simulation data 
             using the date in the data."""
@@ -229,24 +229,25 @@ class Stock:
         cursor.execute("""
             SELECT cash_invested, investment_value, current_performance, number_stocks
             FROM simulationData
-            WHERE simulation_id = ? AND date = ?
-        """, (simulation_id, end_date))
+            WHERE simulation_id = ? AND date = ? And stock_ticker = ?
+        """, (simulation_id, end_date, self.ticker))
         data = cursor.fetchone()
         cursor.close()
         conn.close()
 
         if not data:
-            raise ValueError(f"No simulation data found for ID {simulation_id} on {date}")
+            raise ValueError(f"No simulation data found for ID {simulation_id} on {end_date}")
 
         self.set_cash_invested(data[0])
-        self.opening_value = self.fetchOpeningValue(self.ticker, date)
-        self.current_value = self.fetchClosingValue(self.ticker, date)
+        self.opening_value = self.fetchOpeningValue(self.ticker, start_date)
+        self.current_value = self.fetchClosingValue(self.ticker, end_date)
         self.investment_value = data[1]
-        #self.opening_performance = 
+        self.opening_performance = Stock.fetchOpeningPerformance(self.ticker, start_date)
         self.current_performance = data[2]
         self.set_number_stocks(data[3])
 
-    def get_start_and_end_dates(self, simulation_id: int) -> tuple[str, str]:
+    @staticmethod
+    def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
         """Fetch the start and end dates of the simulation."""
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
