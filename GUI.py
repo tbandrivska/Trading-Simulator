@@ -1,8 +1,8 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
-    QHBoxLayout, QGridLayout, QLineEdit, QGroupBox, QSpinBox,
-    QFormLayout, QSizePolicy
+    QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
+    QGroupBox, QSpinBox, QFormLayout, QSizePolicy,
 )
 from PySide6.QtCore import Qt, QTimer
 import sqlite3
@@ -256,9 +256,8 @@ class displayStock(QWidget):
         right_panel.addLayout(status_bar)
 
         #trade bar - num of stock, price of stock, balance after purchase, trade confirmation
-       
-        
-        
+        trade_widget = TradeWidget()
+        right_panel.addWidget(trade_widget)
 
         #implement trading strategies - trigger displayStrategies
         self.trading_strat_button = QPushButton("IMPLEMENT TRADING STRATEGIES")
@@ -284,6 +283,50 @@ class displayStock(QWidget):
     def endTrade(self):
         self.close()
         self.simWindow.show()
+
+class TradeWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        #tab buttons (PURCHASE / SELL)
+        button_layout = QHBoxLayout()
+        self.purchase_tab_btn = QPushButton("PURCHASE")
+        self.sell_tab_btn = QPushButton("SELL")
+        self.purchase_tab_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.sell_tab_btn.clicked.connect(lambda: self.stack.setCurrentIndex(1))
+        button_layout.addWidget(self.purchase_tab_btn)
+        button_layout.addWidget(self.sell_tab_btn)
+
+        #stack Layout for switching between purchase/sell
+        self.stack = QStackedLayout()
+        self.stack.addWidget(self.create_tab("PURCHASE"))
+        self.stack.addWidget(self.create_tab("SELL"))
+
+        #combine stack and buttons
+        layout = QVBoxLayout()
+        layout.addLayout(button_layout)
+        layout.addLayout(self.stack)
+        self.setLayout(layout)
+
+    def create_tab(self, mode):
+        widget = QWidget()
+        layout = QVBoxLayout()
+
+        stock_input = QLineEdit()
+        stock_input.setPlaceholderText("Enter number of stocks")
+
+        price_label = QLabel("PRICE: £...")
+        balance_label = QLabel("BALANCE AFTER: £...")
+
+        confirm_button = QPushButton(f"CONFIRM {mode}")
+
+        layout.addWidget(QLabel("NUMBER OF STOCK"))
+        layout.addWidget(stock_input)
+        layout.addWidget(price_label)
+        layout.addWidget(balance_label)
+        layout.addWidget(confirm_button)
+        widget.setLayout(layout)
+        return widget
 
 class displayStrategies(QWidget):
     n = None
