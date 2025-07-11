@@ -31,7 +31,6 @@ class loadingWindow(QWidget):
         self.startWindow.show()
         self.close()
 
-
 class startWindow(QWidget):
     def __init__(self, simulator):
         super().__init__()
@@ -211,12 +210,12 @@ class displayStock(QWidget):
         left_panel = QVBoxLayout()
 
         #stock name
-        stock_name_label = QLabel(self.Stock.getName())
+        stock_name_label = QLabel(self.Stock.get_name())
         left_panel.addWidget(stock_name_label)
 
         #placeholder for graph
         graph_placeholder = QLabel()
-        graph_placeholder.setFixedSize(500, 500)
+        graph_placeholder.setFixedSize(400, 400)
         graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
         left_panel.addWidget(graph_placeholder)
 
@@ -224,7 +223,7 @@ class displayStock(QWidget):
         stock_details_grid = QGridLayout()
         #initial investment value
         invested_title_label = QLabel("CASH INVESTED")
-        invested_label = QLabel(str("£" + self.Stock.get_invested_balance()))
+        invested_label = QLabel(str("£" + str(self.Stock.get_cash_invested())))
         stock_details_grid.addWidget(invested_title_label,0,0)
         stock_details_grid.addWidget(invested_label,1,0)
         #current investment value
@@ -271,6 +270,12 @@ class displayStock(QWidget):
         right_panel.addWidget(self.end_trade_button)
         self.end_trade_button.clicked.connect(self.endTrade)
 
+        #final layout
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(left_panel)
+        main_layout.addLayout(right_panel)  
+        self.setLayout(main_layout)
+
     def displayStrategiesFunc(self):
         self.display_strategies_obj = displayStrategies(self)
         self.display_strategies_obj.show()
@@ -279,7 +284,6 @@ class displayStock(QWidget):
     def endTrade(self):
         self.close()
         self.simWindow.show()
-
 
 class displayStrategies(QWidget):
     n = None
