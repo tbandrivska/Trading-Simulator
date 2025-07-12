@@ -1,11 +1,10 @@
 import sqlite3
 from typing import Dict, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from collections import Counter
 import random
-from datetime import datetime
 from Stock import Stock
 from Balance import Balance
 from Database import Database
@@ -164,7 +163,7 @@ class TradingSimulator:
         conn.commit()
         conn.close()  
 
-    def record_portfolio(self, date) -> List[int]:
+    def record_portfolio(self, date):
         """Record the state of stocks and balance on a specific day"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -196,8 +195,6 @@ class TradingSimulator:
         
         conn.commit()
         conn.close()
-
-        return random_numbers
 
     def get_new_random_number(self) -> int:
         """Generate a random number not in the previous_numbers list"""
@@ -246,7 +243,7 @@ class TradingSimulator:
         last_date = cursor.fetchone()
         if not last_date:
             raise ValueError(f"No data found for simulation {sim_id}")
-        self.start_date = last_date[0]
+        self.start_date = str(last_date[0])
 
         #set balance
         self.balance.set_balance_from_sim(sim_id)
@@ -263,14 +260,21 @@ class TradingSimulator:
             raise ValueError("Start date not set")
         
         #need to change this so it loops instead of erroring if the date range is invalid
-        start_date_obj = datetime.strptime(self.start_date, "%Y-%m-%d").date()
-        end_date = start_date_obj + timedelta(days=days)
-        #end_date = end_date.strftime("%Y-%m-%d")
+        
+        print(f"self.start_date = {self.start_date}, type = {type(self.start_date)}")
+        # Convert start_date string to datetime object
+        if isinstance(self.start_date, str):
+            end_date = datetime.strptime(self.start_date, "%Y-%m-%d").date() + timedelta(days=days)
+        elif isinstance(self.start_date, datetime):
+            end_date = self.start_date.date() + timedelta(days=days)  # Strip time part if needed
+        elif isinstance(self.start_date, date):
+            end_date = self.start_date + timedelta(days=days)
+        else:
+            raise TypeError("self.start_date must be a string, datetime, or date")
 
         if not self._validate_dates(self.start_date, end_date):
-            raise ValueError("Invalid date range")
+            raise ValueError("Invalid date range. Please check the database for available dates.")
         
-        self.end_date = end_date.strftime("%Y-%m-%d")
         print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         
     def _validate_dates(self, start, end) -> bool:
@@ -452,13 +456,13 @@ class TradingSimulator:
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # 2 cofiguration - new simulation
+        # # 2 cofiguration - new simulation
         # self.new_simulation()
         # self.set_timeframe(30)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
 
         # 2.5 configuration - load previous simulation
-        self.load_previous_simulation('sim_20250712_695')
+        self.load_previous_simulation('sim_20250712_39995')
         self.set_timeframe(30)
         print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
 
