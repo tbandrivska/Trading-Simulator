@@ -105,14 +105,13 @@ class Balance:
     #copy and pasted from Stock.py - maybe should be moved to a common utility module    
     @staticmethod
     def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
-        """Fetch the start and end dates of the simulation."""
+        """Fetch the start and end dates of the simulation ."""
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""         
             SELECT MIN(date), MAX(date)
-            FROM simulationData
-            WHERE simulation_id = ?
-        """, (simulation_id,))
+            FROM {simulation_id}
+        """)
         dates = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -120,4 +119,7 @@ class Balance:
         if not dates or not all(dates):
             raise ValueError(f"No valid dates found for simulation ID {simulation_id}")
         
-        return dates[0], dates[1]    
+        #remove duplicate dates
+        dates = list(set(dates))
+
+        return dates[0], dates[1]

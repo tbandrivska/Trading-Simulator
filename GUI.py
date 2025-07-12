@@ -265,6 +265,7 @@ class displayStock(QWidget):
         self.close()
         self.simWindow.show()
 
+
 class TradeWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -309,8 +310,10 @@ class TradeWidget(QWidget):
         widget.setLayout(layout)
         return widget
 
+
 class displayStrategies(QWidget):
     n = None
+
 
 class displaySims(QWidget):
     def __init__(self, startWindow):

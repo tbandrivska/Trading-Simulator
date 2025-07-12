@@ -160,7 +160,7 @@ class Stock:
 
         opening_value = data[0][0]
         closing_value = data[-1][1] 
-        
+
         if opening_value == 0:
             return 0.0
         return ((closing_value - opening_value) / opening_value) * 100.0
@@ -248,14 +248,13 @@ class Stock:
 
     @staticmethod
     def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
-        """Fetch the start and end dates of the simulation."""
+        """Fetch the start and end dates of the simulation ."""
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""         
             SELECT MIN(date), MAX(date)
-            FROM simulationData
-            WHERE simulation_id = ?
-        """, (simulation_id,))
+            FROM {simulation_id}
+        """)
         dates = cursor.fetchone()
         cursor.close()
         conn.close()

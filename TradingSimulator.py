@@ -131,8 +131,8 @@ class TradingSimulator:
         """Initialize a new simulation with valid ID"""
         simulation_id = self.generate_simulation_id()
         self.current_simulation_id = simulation_id
-        self._create_simulation_table()  # Must be called before run!
-        self.record_day_zero(simulation_id)  # Record initial state
+        self.create_simulation_table()  # Must be called before run!
+        self.record_portfolio()  # Record initial state
         self.randomiseStartDate()
         self.reset_all(self.start_date)
 
@@ -156,7 +156,7 @@ class TradingSimulator:
                 Bool = False
         return ID
 
-    def _create_simulation_table(self) -> None:
+    def create_simulation_table(self) -> None:
         """Create table to track daily balance and stock changes"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -177,18 +177,22 @@ class TradingSimulator:
         conn.commit()
         conn.close()  
 
-    def record_day_zero(self, simulation_id) -> None:
-        """Record initial state of stocks and balance at the start of the simulation"""
+    def record_portfolio(self) -> None:
+        """Record the current state of stocks and balance"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
         
         for ticker, stock in self.stocks.items():
+            # Validate table name to prevent SQL injection
+            if not self.current_simulation_id or not self.current_simulation_id.isidentifier():
+                raise ValueError("Invalid simulation ID for table name.")
+            
             cursor.execute(f"""
-                INSERT INTO {simulation_id} 
-                (date, ticker, current_balance, total_invested_balance, cash_invested,
+                INSERT INTO "{self.current_simulation_id}" 
+                (date, current_balance, total_invested_balance, ticker, cash_invested,
                   investment_value, current_performance, number_of_stocks)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+            """,(
                 self.start_date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
@@ -428,75 +432,22 @@ class TradingSimulator:
             # stock prices stay the same and the approximation function replicates that
 
     def _run_daily_cycle(self, date: str) -> None:
-        """Process one day of trading"""
-        #records values at the start of the day (before trading)
-        self._record_portfolio_state(date, "start")            
-                
+        """Process one day of trading and record changes in database"""      
         for stock in self.stocks.values():
             stock.dailyStockUpdate(date)
             self.strategies.apply(stock, date)
-
-        self._record_portfolio_state(date, "end")
+        
+        self.record_portfolio() 
         
         # Optional(???) Print daily summary
         print(f"\n{date}:")
         print(f"Portfolio Value: ${self._get_total_value():.2f}")
-
-    def _record_portfolio_state(self, date: str, phase: str) -> None:
-        """Save portfolio snapshot to database"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
         
-        if not self.current_simulation_id:
-            raise ValueError("Simulation ID not set! Call new_simulation() first")
-
-        if phase == "start":
-            for ticker, stock in self.stocks.items():
-                cursor.execute(f"""
-                    INSERT OR REPLACE INTO {self.current_simulation_id} VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?
-                    )
-                """, (
-                    date,
-                    ticker,
-                    self.balance.getCurrentBalance() if phase == "start" else None,
-                    self.balance.getCurrentBalance() if phase == "end" else None,
-                    stock.get_number_stocks() if phase == "start" else None,
-                    stock.get_number_stocks() if phase == "end" else None,
-                    stock.get_cash_invested() if phase == "start" else None,
-                    stock.get_cash_invested() if phase == "end" else None,
-                ))
-        
-        if phase == "end":
-            for ticker, stock in self.stocks.items():
-                cursor.execute(f"""
-                    UPDATE {self.current_simulation_id} 
-                    SET end_balance = ?,
-                        end_number_of_stocks = ?,
-                        end_investment_value = ?
-                    WHERE date = ? AND ticker = ?
-                """, (
-                    self.balance.getCurrentBalance(),
-                    stock.get_number_stocks(),
-                    stock.get_cash_invested(),
-                    date, 
-                    ticker))   
-
-        try:
-            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='sim_{self.current_simulation_id}'")
-            if not cursor.fetchone():
-                self._create_simulation_table()
-            # ... rest of your recording code ...
-        except sqlite3.Error as e:
-            print(f"Database error: {e}")
-        conn.commit()
-        conn.close()  
-
     def _get_total_value(self) -> float:
         """Calculate total portfolio value (cash + investments)"""
         total = self.balance.getCurrentBalance()
         for stock in self.stocks.values():
-            total += stock.get_current_value() * stock.get_number_stocks()
+            total += stock.get_investment_value()
         return total
 
 
