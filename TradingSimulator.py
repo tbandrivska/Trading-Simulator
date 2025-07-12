@@ -45,22 +45,6 @@ class TradingSimulator:
                 except ValueError:
                     print("Please enter a valid number.")
 
-    def setup_opening_performance(self):
-        """
-        Calculate and store the opening performance for each stock before the simulation starts.
-        Compares the stock value on the simulation start date with the previous day.
-        """
-        # for stock in self.stocks:
-        #     start_date = self.simulation_start
-        #     prev_date = start_date - timedelta(days=1)
-        #     current_price = stock.get_price(start_date)
-        #     previous_price = stock.get_price(prev_date)
-        #     if current_price and previous_price:
-        #         opening_performance = (current_price - previous_price) / previous_price
-        #         stock.opening_performance = opening_performance
-        #     else:
-        #         stock.opening_performance = None
-
     def validate_user_input(self, prompt, input_type=str):
         """
         General input validation function for user input.
@@ -132,7 +116,7 @@ class TradingSimulator:
         simulation_id = self.generate_simulation_id()
         self.current_simulation_id = simulation_id
         self.create_simulation_table()  # Must be called before run!
-        self.record_portfolio()  # Record initial state
+        self.record_portfolio("true")  # Record initial state of balance and stocks before trading begins
         self.randomiseStartDate()
         self.reset_all(self.start_date)
 
@@ -171,13 +155,14 @@ class TradingSimulator:
                 investment_value REAL,
                 current_performance REAL,
                 number_of_stocks INTEGER,
-                PRIMARY KEY (date, ticker, current_balance, total_invested_balance)
+                pre_trade TEXT,
+                PRIMARY KEY (date, ticker, current_balance, cash_invested, investment_value, current_performance, number_of_stocks, pre_trade)
             )
         """)
         conn.commit()
         conn.close()  
 
-    def record_portfolio(self) -> None:
+    def record_portfolio(self, pre_trade: str) -> None:
         """Record the current state of stocks and balance"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -190,8 +175,8 @@ class TradingSimulator:
             cursor.execute(f"""
                 INSERT INTO "{self.current_simulation_id}" 
                 (date, current_balance, total_invested_balance, ticker, cash_invested,
-                  investment_value, current_performance, number_of_stocks)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  investment_value, current_performance, number_of_stocks, pre_trade)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 self.start_date,
                 self.balance.getCurrentBalance(),
@@ -200,7 +185,8 @@ class TradingSimulator:
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
                 stock.get_current_performance(),
-                stock.get_number_stocks()
+                stock.get_number_stocks(),
+                pre_trade
             ))
         
         conn.commit()
@@ -262,14 +248,17 @@ class TradingSimulator:
             raise ValueError("Start date not set")
         
         #need to change this so it loops instead of erroring if the date range is invalid
-        end_date = self.start_date + timedelta(days=days)
+        start_date_obj = datetime.strptime(self.start_date, "%Y-%m-%d").date()
+        end_date = start_date_obj + timedelta(days=days)
+        #end_date = end_date.strftime("%Y-%m-%d")
+
         if not self._validate_dates(self.start_date, end_date):
             raise ValueError("Invalid date range")
         
         self.end_date = end_date.strftime("%Y-%m-%d")
         print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         
-    def _validate_dates(self, start: str, end: str) -> bool:
+    def _validate_dates(self, start, end) -> bool:
         """Check if dates exist in database"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -396,7 +385,7 @@ class TradingSimulator:
             SELECT DISTINCT date FROM historicalData
             WHERE date BETWEEN ? AND ?
             ORDER BY date ASC
-        """, (self.start_date.strftime("%Y-%m-%d"), self.end_date))
+        """, (self.start_date, self.end_date))
         rows = cursor.fetchall()
         conn.close()
 
@@ -405,11 +394,11 @@ class TradingSimulator:
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
                 self.strategies.apply(stock, i)
-            self._run_daily_cycle(date)
-            portfolio_value = self._get_total_value()
+            self.run_daily_cycle(date)
+            portfolio_value = self.get_total_value()
             self.performance_history.append((date, portfolio_value))  
         
-    def _get_simulation_dates(self) -> List[str]:
+    def get_simulation_dates(self) -> List[str]:
         """Get all dates between start and end date from the simulation table"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -431,19 +420,19 @@ class TradingSimulator:
             # yup - but stock graphs still show the dates of the weekends and holidays for continuency
             # stock prices stay the same and the approximation function replicates that
 
-    def _run_daily_cycle(self, date: str) -> None:
+    def run_daily_cycle(self, date: str) -> None:
         """Process one day of trading and record changes in database"""      
         for stock in self.stocks.values():
             stock.dailyStockUpdate(date)
-            self.strategies.apply(stock, date)
+            #self.strategies.apply(stock, date)
         
-        self.record_portfolio() 
+        self.record_portfolio("false") 
         
         # Optional(???) Print daily summary
         print(f"\n{date}:")
-        print(f"Portfolio Value: ${self._get_total_value():.2f}")
+        print(f"Portfolio Value: ${self.get_total_value():.2f}")
         
-    def _get_total_value(self) -> float:
+    def get_total_value(self) -> float:
         """Calculate total portfolio value (cash + investments)"""
         total = self.balance.getCurrentBalance()
         for stock in self.stocks.values():
@@ -461,24 +450,16 @@ class TradingSimulator:
         if new_simulation:
             self.new_simulation()
             self.set_timeframe(days)
+            self.trade_each_stock
+            self.run_simulation
+            self.end_simulation(False,0)
         else:
-            print("Simulation ended. Final portfolio value:", self._get_total_value())
+            print("Simulation ended. Final portfolio value:", self.get_total_value())
             self.plot_performance()
     
     # def calc_portfolio_performance(self, date) -> float:
     #     """Calculate overall portfolio performance as a percentage on a specific date"""
-    #     conn = sqlite3.connect('data.db')
-    #     cursor = conn.cursor()
-    #     #fetch start invested when date = start date and end invested when date = date
-    #     cursor.execute(f"""
-    #         SELECT start_invested, end_invested
-    #         FROM sim_{self.current_simulation_id}
-    #         WHERE date = ? OR date = ?
-    #     """, (self.start_date, date))
-    #     result = cursor.fetchone()
-    #     conn.close()
-        
-        
+           
         
 
       
@@ -492,23 +473,30 @@ class TradingSimulator:
         print("phase 1 complete: Stocks created and start date set.")
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
-        # 2 cofiguration
-        self.new_simulation()
-        #self.load_previous_simulation('sim_20231001_123')
+       
+        # 2 cofiguration - new simulation
+        # self.new_simulation()
+        # self.set_timeframe(30)
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+
+        # 2.5 configuration - load previous simulation
+        self.load_previous_simulation('sim_20250712_695')
         self.set_timeframe(30)
-        print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+
         # 3 simulation setup (purchase stocks and set strategies)
         self.trade_each_stock()
         print("phase 3 complete: Stocks traded and strategies set.")
+
         # 4 simulation Execution
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
+
         # 5 simulation termination
         self.end_simulation(new_simulation=False, days = 0)
         print("phase 5 complete: Simulation ended and performance plotted.")
         self.strategies.activate('take_profit', threshold=0.2)
 
-        self.run_simulation()
 
 
 if __name__ == "__main__":

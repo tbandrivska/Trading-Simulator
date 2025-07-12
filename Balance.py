@@ -65,42 +65,32 @@ class Balance:
         self.totalInvestedBalance = 0
 
     def set_balance_from_sim(self, simulation_id: str) -> None:
-        """Set the balance instance variables based on the the first and last date in the simulation data."""
-        start_date = Balance.get_start_and_end_dates(simulation_id)[0]
-        end_date = Balance.get_start_and_end_dates(simulation_id)[1]
-        
-        conn = sqlite3.connect('simulation_data.db')
+        """Set the balance instance variables based on the first and last date in the simulation data."""
+        start_date, end_date = Balance.get_start_and_end_dates(simulation_id)
+
+        results = {}
+
+        conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT current_balance, total_invested_balance
-            FROM simulationData
-            WHERE simulation_id = ? AND date = ?
-        """, (simulation_id, start_date))
 
-        data = cursor.fetchone()
-        conn.close()    
+        for label, date in [("start", start_date), ("end", end_date)]:
+            cursor.execute(f"""
+                SELECT current_balance, total_invested_balance
+                FROM {simulation_id}
+                WHERE date = ?
+            """, (date,))
+            
+            data = cursor.fetchone()
+            if not data:
+                raise ValueError(f"No simulation data found for ID {simulation_id} on {date}")
+            
+            results[label] = data
 
-        if not data:
-            raise ValueError(f"No simulation data found for ID {simulation_id} on {start_date}")
-        
-        self.startBalance = data[0]
-
-        conn = sqlite3.connect('simulation_data.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT current_balance, total_invested_balance
-            FROM simulationData
-            WHERE simulation_id = ? AND date = ?
-        """, (simulation_id, end_date))
-
-        data = cursor.fetchone()
         conn.close()
 
-        if not data:
-            raise ValueError(f"No simulation data found for ID {simulation_id} on {end_date}")
-        
-        self.currentBalance = data[0]
-        self.totalInvestedBalance = (data[1])
+        self.startBalance = results["start"][0]
+        self.currentBalance = results["end"][0]
+        self.totalInvestedBalance = results["end"][1]
 
     #copy and pasted from Stock.py - maybe should be moved to a common utility module    
     @staticmethod
