@@ -76,7 +76,9 @@ class TradingSimulator:
 
         self.current_simulation_id = None
         self.active_strategies: Dict[str, dict] = {} 
-        self.performance_history = [] 
+        self.performance_history = []
+
+        self.prev_random_numbers = [] 
         
     def create_stocks(self) -> None:
         """Create Stock objects for all tickers in database"""
@@ -116,8 +118,8 @@ class TradingSimulator:
         simulation_id = self.generate_simulation_id()
         self.current_simulation_id = simulation_id
         self.create_simulation_table()  # Must be called before run!
-        self.record_portfolio("true")  # Record initial state of balance and stocks before trading begins
         self.randomiseStartDate()
+        self.record_portfolio(self.start_date)
         self.reset_all(self.start_date)
 
     def generate_simulation_id(self) -> str:
@@ -125,8 +127,8 @@ class TradingSimulator:
         todays_date = datetime.now().strftime("%Y%m%d")
         Bool = True
         while Bool:
-            number = str(random.randint(100, 999))
-            ID = f"sim_{todays_date}_{number}"
+            random_number = str(self.get_new_random_number())
+            ID = f"sim_{todays_date}_{random_number}"
 
             # Check if ID already exists in database
             conn = sqlite3.connect('data.db')
@@ -155,30 +157,33 @@ class TradingSimulator:
                 investment_value REAL,
                 current_performance REAL,
                 number_of_stocks INTEGER,
-                pre_trade TEXT,
-                PRIMARY KEY (date, ticker, current_balance, cash_invested, investment_value, current_performance, number_of_stocks, pre_trade)
+                random_number INTEGER,
+                PRIMARY KEY (date, ticker, random_number)
             )
         """)
         conn.commit()
         conn.close()  
 
-    def record_portfolio(self, pre_trade: str) -> None:
-        """Record the current state of stocks and balance"""
+    def record_portfolio(self, date) -> List[int]:
+        """Record the state of stocks and balance on a specific day"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-        
+
         for ticker, stock in self.stocks.items():
             # Validate table name to prevent SQL injection
             if not self.current_simulation_id or not self.current_simulation_id.isidentifier():
                 raise ValueError("Invalid simulation ID for table name.")
             
+            # Generate a unique random number for this entry
+            random_number = self.get_new_random_number()
+            
             cursor.execute(f"""
                 INSERT INTO "{self.current_simulation_id}" 
                 (date, current_balance, total_invested_balance, ticker, cash_invested,
-                  investment_value, current_performance, number_of_stocks, pre_trade)
+                  investment_value, current_performance, number_of_stocks, random_number)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
-                self.start_date,
+                date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
                 ticker,
@@ -186,11 +191,21 @@ class TradingSimulator:
                 stock.get_investment_value(),
                 stock.get_current_performance(),
                 stock.get_number_stocks(),
-                pre_trade
+                random_number
             ))
         
         conn.commit()
         conn.close()
+
+        return random_numbers
+
+    def get_new_random_number(self) -> int:
+        """Generate a random number not in the previous_numbers list"""
+        while True:
+            random_number = random.randint(1, 100000)
+            if random_number not in self.prev_random_numbers:
+                self.prev_random_numbers.append(random_number)
+                return random_number
 
     def randomiseStartDate(self) -> None:
             """Set a random start date within the available historical data"""
@@ -360,6 +375,7 @@ class TradingSimulator:
             purchase:bool = self.balance.purchase(stock, amount)
             if purchase:
                 print(f"Purchased {amount} shares of {ticker}")
+
             return purchase
            
         elif amount < 0:
@@ -374,10 +390,7 @@ class TradingSimulator:
 
     # 4 simulation Execution
     def run_simulation(self) -> None:
-        """Main simulation loop"""
-        if not self.start_date or not self.end_date:
-            raise ValueError("Timeframe not set")
-
+        """Run simulation for the set timeframe"""
         # Generate all trading dates between start and end date (inclusive)
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -390,47 +403,12 @@ class TradingSimulator:
         conn.close()
 
         dates = [row[0] for row in rows]
-        for i, date in enumerate(dates):
+        for date in dates: #each loop = daily cycle
+            #update stock values and apply strategies to each stock
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
-                self.strategies.apply(stock, i)
-            self.run_daily_cycle(date)
-            portfolio_value = self.get_total_value()
-            self.performance_history.append((date, portfolio_value))  
-        
-    def get_simulation_dates(self) -> List[str]:
-        """Get all dates between start and end date from the simulation table"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        
-        cursor.execute(f"""
-            SELECT date FROM sim_{self.current_simulation_id} 
-            WHERE date BETWEEN ? AND ? 
-            ORDER BY date ASC
-        """, (self.start_date, self.end_date))
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        # Extract the dates as strings
-        listOfDays = [row[0] for row in rows]
-        return listOfDays
-
-        # Doesnt the Wall street not work over the weekend and on holidays? So like the stock values don't change on those days?? It's stil fine ig nglno
-            # yup - but stock graphs still show the dates of the weekends and holidays for continuency
-            # stock prices stay the same and the approximation function replicates that
-
-    def run_daily_cycle(self, date: str) -> None:
-        """Process one day of trading and record changes in database"""      
-        for stock in self.stocks.values():
-            stock.dailyStockUpdate(date)
-            #self.strategies.apply(stock, date)
-        
-        self.record_portfolio("false") 
-        
-        # Optional(???) Print daily summary
-        print(f"\n{date}:")
-        print(f"Portfolio Value: ${self.get_total_value():.2f}")
+            
+            self.record_portfolio(date)              
         
     def get_total_value(self) -> float:
         """Calculate total portfolio value (cash + investments)"""
