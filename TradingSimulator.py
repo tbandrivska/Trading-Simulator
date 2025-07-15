@@ -55,6 +55,13 @@ class TradingSimulator:
             except ValueError:
                 print(f"Invalid input. Please enter a {input_type.__name__}.")
 
+    def get_total_value(self) -> float:
+        """Calculate total portfolio value (cash + investments)"""
+        total = self.balance.getCurrentBalance()
+        for stock in self.stocks.values():
+            total += stock.get_investment_value()
+        return total
+
 
     # 1 initialisation
     def __init__(self, start_balance: float = 10000):
@@ -168,15 +175,24 @@ class TradingSimulator:
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
-        for ticker, stock in self.stocks.items():
-            # Validate table name to prevent SQL injection
-            if not self.current_simulation_id or not self.current_simulation_id.isidentifier():
-                raise ValueError("Invalid simulation ID for table name.")
-            
-            # Generate a unique random number for this entry
-            random_number = self.get_new_random_number()
-            
-            cursor.execute(f"""
+        for stock in self.stocks.values():
+            self.record_transaction(stock,date)
+        
+        conn.commit()
+        conn.close()
+
+    def record_transaction(self, stock, date):
+        """Record transaction data into database after each stock transaction"""
+        # Validate table name to prevent SQL injection
+        if not self.current_simulation_id or not self.current_simulation_id.isidentifier():
+            raise ValueError("Invalid simulation ID for table name.")
+        
+        #Generate a unique random number for this entry
+        random_number = self.get_new_random_number()
+
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute(f"""
                 INSERT INTO "{self.current_simulation_id}" 
                 (date, current_balance, total_invested_balance, ticker, cash_invested,
                   investment_value, current_performance, number_of_stocks, random_number)
@@ -185,7 +201,7 @@ class TradingSimulator:
                 date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
-                ticker,
+                stock.get_ticker(),
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
                 stock.get_current_performance(),
@@ -390,7 +406,7 @@ class TradingSimulator:
             return sell
         else:
             return False
-
+        
 
     # 4 simulation Execution
     def run_simulation(self) -> None:
@@ -411,16 +427,9 @@ class TradingSimulator:
             #update stock values and apply strategies to each stock
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
-            
-            self.record_portfolio(date)              
-        
-    def get_total_value(self) -> float:
-        """Calculate total portfolio value (cash + investments)"""
-        total = self.balance.getCurrentBalance()
-        for stock in self.stocks.values():
-            total += stock.get_investment_value()
-        return total
-
+                #insert - execute strategies
+                self.record_transaction(stock, date)                           
+    
 
     #  5 simulation termination
     def end_simulation(self, new_simulation: bool, days: int) -> None:
@@ -439,9 +448,7 @@ class TradingSimulator:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
             self.plot_performance()
     
-    # def calc_portfolio_performance(self, date) -> float:
-    #     """Calculate overall portfolio performance as a percentage on a specific date"""
-           
+
         
 
       
