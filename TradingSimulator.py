@@ -356,7 +356,7 @@ class TradingSimulator:
     def trade_each_stock(self) -> None:
         #purchase stocks or set trading strategies for each stock before simulation begins
         for ticker in self.database.getTickers():
-            trading:bool = True
+            trading: bool = True
             stock: Stock = self.stocks[ticker]
             while trading:
                 print("Balance: " + str(self.balance.getCurrentBalance()))
@@ -368,10 +368,12 @@ class TradingSimulator:
                     amount = int(input()) # Convert string input to integer (add input validation later)
                     try:
                         if self.trade_a_stock(ticker, amount):
+                            #self.record_transaction(stock, date)
                             trading = False
                     except ValueError:
                         print("Invalid input. Please enter a valid number.")
                 elif user_input == "no":
+                    #self.record_transaction(stock, date)
                     trading = False
                 else:
                     print("Invalid input. Please enter 'yes' or 'no'.")
