@@ -275,8 +275,6 @@ class TradingSimulator:
         if not self.start_date:
             raise ValueError("Start date not set")
         
-        #need to change this so it loops instead of erroring if the date range is invalid
-        
         print(f"self.start_date = {self.start_date}, type = {type(self.start_date)}")
         # Convert start_date string to datetime object
         if isinstance(self.start_date, str):
@@ -290,6 +288,7 @@ class TradingSimulator:
 
         if not self._validate_dates(self.start_date, end_date):
             raise ValueError("Invalid date range. Please check the database for available dates.")
+            #need to change this so it loops instead of erroring if the date range is invalid
         
         print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         
@@ -308,54 +307,54 @@ class TradingSimulator:
         conn.close()
         return bool(exists)
 
-    #ignore for now - needs rewriting and debugging
-    def loop_dates(self):
+    def loop_restart_date(self):
         """If a time frame is longer than we have days for, use the final date we have
-        to locate a previous date with similar values. Now everytime the final date is reached,
-        we continue from this date"""
+        to locate a previous date with similar values. Now, everytime the final date is 
+        reached, we continue from this date with similar values"""
         
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
         
+        finalDate = self.database.getEndDate() 
+        value_range = 0.05
         dates = []
-        #find all valid dates where stocks have the same value 
-        for Stock in self.stocks.values():
-            ticker = Stock.get_ticker()
-            OpeningValue = Stock.fetchOpeningValue(ticker, self.end_date)
-            cursor.execute("""
-                           SELECT date WHERE open EQUALS ?
-                           AND ticker = ?
-            """,(OpeningValue, ticker))
-            dates = cursor.fetchone()[0]
 
-        #if a date occurs 3 or more times, its valid for use and should be returned
-        date_counts = Counter(dates) # Count occurrences
-        frequent_dates = [date for date, count in date_counts.items() if count >= 5] # Filter dates with 5 or more occurrences
-        if len(frequent_dates) != 0:
-            if frequent_dates[0] != finalDate:
-                return frequent_dates[0]
-        
-        for date in dates:
-            count = 0
-            for Stock in self.stocks:
+        #find all valid dates where stocks have a similar value 
+        while len(dates) == 0:
+            for Stock in self.stocks.values():
                 ticker = Stock.get_ticker()
+                OpeningValue = Stock.fetchOpeningValue(ticker, finalDate)
+                upperBound = OpeningValue * (1+value_range)
+                lowerBound = OpeningValue * (1-value_range)
                 cursor.execute("""
-                                SELECT open WHERE date EQUALS ?
-                               AND ticker = ?
-                """,(date,ticker))
-                OpeningValue = cursor.fetchone()[1]
+                            SELECT date FROM historicalData 
+                            WHERE open >= ? AND open <= ? 
+                            AND ticker = ?
+                """,(lowerBound ,upperBound, ticker))
+                
+                #add any dates found to the list
+                results = cursor.fetchall()
+                for row in results:
+                    dates.append(row[0])
 
-                if Stock.fetchOpeningValue(date) * 0.95 <= OpeningValue <= Stock.fetchOpeningValue(date) * 1.05:
-                    count = count + 1
-                if 5 <= count: #if 5 or more stocks on a date have a oepning value within the 5% range, return the date
-                    if frequent_dates[0] != finalDate:
-                        return date
+            #find the most frequently occuring date
+            date_counts = Counter(dates) # Count occurrences
+            most_common_date, count = date_counts.most_common(1)[0]
+
+            if len(dates) < 10 or count < 3:
+                #if not enough dates are returned or the most frequently occuring date occurs less than 3 times 
+                    # increase the range by 5% and restart the process
+                value_range = value_range + 0.05
+                dates = []
+        
+        conn.close()
+        return most_common_date     
 
 
     # 3 simulation setup (purchase stocks and set strategies)
     def trade_each_stock(self) -> None:
         #purchase stocks or set trading strategies for each stock before simulation begins
-        for ticker in self.database.getTickers():
+        for ticker in self.get_tickers():
             trading: bool = True
             stock: Stock = self.stocks[ticker]
             while trading:
@@ -448,7 +447,7 @@ class TradingSimulator:
             self.end_simulation(False,0)
         else:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
-            self.plot_performance()
+            #self.plot_performance()
     
 
         
