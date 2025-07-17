@@ -2,9 +2,10 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
     QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
-    QGroupBox, QSpinBox, QFormLayout, QSizePolicy,
+    QGroupBox, QSpinBox, QMessageBox, QFormLayout, QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QIntValidator
 import sqlite3
 from Stock import Stock
 from TradingSimulator import TradingSimulator
@@ -133,8 +134,12 @@ class displaySimulation(QWidget):
         graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
 
         #time input
+        self.days_input = QLineEdit()
+        self.days_input.setValidator(QIntValidator(1, 9999))
+        self.days_input.setText("30")  #default value
+
         time_layout = QFormLayout()
-        time_layout.addRow("ENTER RUN TIME (DAYS): ", QLineEdit())
+        time_layout.addRow("ENTER RUN TIME (DAYS): ", self.days_input)
 
         #display balance, performance, graph and time input on the RHS
         right_panel = QVBoxLayout()
@@ -160,20 +165,39 @@ class displaySimulation(QWidget):
         self.setLayout(final_layout)
 
         #button actions
+        self.run_button.clicked.connect(lambda: self.run_sim)
         self.end_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
-
 
     def get_stock(self, index: int) -> Stock: 
         """Get stock object by index."""
         ticker = self.simulator.get_tickers()[index]
         Stock = self.simulator.get_stock(ticker)
-        return Stock
-    
+        return Stock   
+
     def displayStockFunc(self, Stock):
         """Display stock details in a new window."""
         self.stock_display = displayStock(self, self.simulator, Stock)
         self.stock_display.show()
         self.hide()
+
+    def run_sim(self, days):
+        days = 0
+        while days == 0:
+            days = self.get_days_input()
+        
+        self.simulator.set_timeframe(days)
+        self.simulator.run_simulation()
+        #insert function - update displayed data daily / update displayed data after simulation
+
+    def get_days_input(self) -> int:
+        text = self.days_input.text()
+        if text.isdigit():
+            days = int(text)
+            if 1 <= days <= 9999:
+                return days
+        
+        QMessageBox.warning(self, "Invalid Input", "Please enter a number between 1 and 9999.")
+        return 0  #Indicate invalid input
 
 
 class displayStock(QWidget):
@@ -263,6 +287,7 @@ class displayStock(QWidget):
 
     def endTrade(self):
         self.close()
+        #insert function - update simWindow data
         self.simWindow.show()
 
 
@@ -329,7 +354,7 @@ class displaySims(QWidget):
         for sim_id in self.sim_IDS:
             button = QPushButton(sim_id)
             button.setFixedSize(200, 40)
-            button.clicked.connect(lambda checked=False, n=sim_id: self.startWindow.displaySimDetailsFunc(sim_id))
+            button.clicked.connect(lambda checked=False, id=sim_id: self.displayPrevSimFunc(id))
             layout.addWidget(button)
 
         #back button
@@ -360,7 +385,10 @@ class displaySims(QWidget):
         
         conn.close()
         return sim_names
-
+    
+    def displayPrevSimFunc(self, sim_id):
+        self.startWindow.displaySimDetailsFunc(sim_id)
+        self.close()
 
 
 # Test function
