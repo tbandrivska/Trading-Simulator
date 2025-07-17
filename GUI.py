@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
     QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
-    QGroupBox, QSpinBox, QMessageBox, QFormLayout, QSizePolicy
+    QGroupBox, QSpinBox, QMessageBox, QFormLayout, QSizePolicy, QScrollArea
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIntValidator
@@ -61,8 +61,9 @@ class displaySimulation(QWidget):
     def __init__(self, startWindow, sim_id):
         super().__init__()
         self.startWindow = startWindow
+        self.sim_id = sim_id
         self.simulator = self.startWindow.simulator 
-        if sim_id is None:
+        if self.sim_id is None:
             self.simulator.new_simulation()
         else:
             #self.simulator.load_simulation(current_simulation_id)
@@ -185,9 +186,10 @@ class displaySimulation(QWidget):
         while days == 0:
             days = self.get_days_input()
         
-        self.simulator.set_timeframe(days)
-        self.simulator.run_simulation()
-        #insert function - update displayed data daily / update displayed data after simulation
+        for day in range(days):
+            self.simulator.set_timeframe(1)
+            self.simulator.run_simulation()
+            self.reloadWindow() #display daily changes, including graph
 
     def get_days_input(self) -> int:
         text = self.days_input.text()
@@ -198,6 +200,12 @@ class displaySimulation(QWidget):
         
         QMessageBox.warning(self, "Invalid Input", "Please enter a number between 1 and 9999.")
         return 0  #Indicate invalid input
+
+    def reloadWindow(self):
+        """reload window so that it dispalys changes in data"""
+        new_window = displaySimulation(self.startWindow, self.sim_id)
+        new_window.show()
+        self.close()
 
 
 class displayStock(QWidget):
@@ -231,10 +239,10 @@ class displayStock(QWidget):
         stock_details_grid.addWidget(invested_title_label,0,0)
         stock_details_grid.addWidget(invested_label,1,0)
         #current investment value
-        current_value_title_label = QLabel("CURRENT INVESTMENT VALUE")
-        current_value_label = QLabel("£" + str(round(self.Stock.get_current_value(),2)))
-        stock_details_grid.addWidget(current_value_title_label,0,1)
-        stock_details_grid.addWidget(current_value_label,1,1)
+        investment_value_title_label = QLabel("CURRENT INVESTMENT VALUE")
+        investment_value_label = QLabel("£" + str(round(self.Stock.get_investment_value(),2)))
+        stock_details_grid.addWidget(investment_value_title_label,0,1)
+        stock_details_grid.addWidget(investment_value_label,1,1)
         #investment performance
         performance_title_label = QLabel("INVESTMENT PERFORMANCE")
         performance_label = QLabel(str(round(self.Stock.get_investment_performance(),1)) + "%")
@@ -245,6 +253,11 @@ class displayStock(QWidget):
         stock_performance_label = QLabel(str(round(self.Stock.get_current_performance(),1)) + "%")
         stock_details_grid.addWidget(stock_performance_title_label,0,3)
         stock_details_grid.addWidget(stock_performance_label,1,3)
+        #Stock value
+        stock_value_title_label = QLabel("STOCK VALUE")
+        stock_value_label = QLabel("£" + str(round(self.Stock.get_current_value(),2)))
+        stock_details_grid.addWidget(stock_value_title_label,0,4)
+        stock_details_grid.addWidget(stock_value_label,1,4)
 
         left_panel.addLayout(stock_details_grid)
 
@@ -260,7 +273,7 @@ class displayStock(QWidget):
         right_panel.addLayout(status_bar)
 
         #trade bar - num of stock, price of stock, balance after purchase, trade confirmation
-        trade_widget = TradeWidget()
+        trade_widget = TradeWidget(self)
         right_panel.addWidget(trade_widget)
 
         #implement trading strategies - trigger displayStrategies
@@ -292,8 +305,9 @@ class displayStock(QWidget):
 
 
 class TradeWidget(QWidget):
-    def __init__(self):
+    def __init__(self, stockWindow):
         super().__init__()
+        self.stockWindow = stockWindow
 
         #tab buttons (PURCHASE / SELL)
         button_layout = QHBoxLayout()
@@ -321,19 +335,34 @@ class TradeWidget(QWidget):
 
         stock_input = QLineEdit()
         stock_input.setPlaceholderText("Enter number of stocks")
-
-        price_label = QLabel("PRICE: £...")
-        balance_label = QLabel("BALANCE AFTER: £...")
+        stock_input.setValidator(QIntValidator(1, 1000000))
+        stock_input.textChanged.connect(lambda: self.update_labels(stock_input.text()))
+        
+        self.price_label = QLabel("PRICE: £...")
+        self.balance_label = QLabel("BALANCE AFTER: £...")
 
         confirm_button = QPushButton(f"CONFIRM {mode}")
 
         layout.addWidget(QLabel("NUMBER OF STOCK"))
         layout.addWidget(stock_input)
-        layout.addWidget(price_label)
-        layout.addWidget(balance_label)
+        layout.addWidget(self.price_label)
+        layout.addWidget(self.balance_label)
         layout.addWidget(confirm_button)
         widget.setLayout(layout)
         return widget
+    
+    def update_labels(self, input):
+        if input.isdigit():
+            num_stocks = int(input)
+            stock_price = self.stockWindow.Stock.get_current_value()
+            total_price = num_stocks * stock_price
+            cash_balance = self.stockWindow.simulator.balance.getCurrentBalance()
+            new_balance = cash_balance - total_price
+            self.price_label.setText(f"PRICE: £{total_price:,.2f}")
+            self.balance_label.setText(f"BALANCE AFTER: £{new_balance:,.2f}")
+        else:
+            self.price_label.setText("PRICE: £0.00")
+            self.balance_label.setText("BALANCE AFTER: £0.00")
 
 
 class displayStrategies(QWidget):
@@ -347,7 +376,6 @@ class displaySims(QWidget):
         self.resize(1200, 600)
         self.setWindowTitle("Previous Simulations")
 
-        #display all the simulations
         layout = QVBoxLayout()
         #loop through all the simulations and display their names
         self.sim_IDS = self.get_sim_IDS()
@@ -362,10 +390,21 @@ class displaySims(QWidget):
         back_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
         layout.addWidget(back_button)
 
-        #set the layout
+        #set the layout and make it scrollable
         main_layout = QHBoxLayout()
         main_layout.addLayout(layout)
-        self.setLayout(main_layout)
+        
+        container_widget = QWidget()
+        container_widget.setLayout(main_layout)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(container_widget)
+
+        final_layout = QVBoxLayout()
+        final_layout.addWidget(scroll_area)
+        self.setLayout(final_layout)
+
 
     def get_sim_IDS(self):
         """Fetch simulation IDs from the database."""
