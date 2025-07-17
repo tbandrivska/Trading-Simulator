@@ -41,7 +41,7 @@ class startWindow(QWidget):
         self.exitButton.clicked.connect(QApplication.quit)
 
     def displaySimDetailsFunc(self, sim_id):
-        self.display_sim_details_obj = displaySimDetails(self, sim_id)
+        self.display_sim_details_obj = displaySimulation(self, sim_id)
         self.display_sim_details_obj.show()
         self.hide()
 
@@ -56,7 +56,7 @@ class startWindow(QWidget):
         self.show()
 
 
-class displaySimDetails(QWidget):
+class displaySimulation(QWidget):
     def __init__(self, startWindow, sim_id):
         super().__init__()
         self.startWindow = startWindow
@@ -98,10 +98,9 @@ class displaySimDetails(QWidget):
             stock_name = Stock.get_name()
             stock_button = QPushButton(stock_name)
             stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            stock_button.clicked.connect(lambda _, s=Stock: self.displayStockFunc(s))
 
-            stock_button.clicked.connect(lambda _, index=i: self.displayStockFunc(Stock))
-
-            stock_performance = Stock.get_current_performance()
+            stock_performance = round(Stock.get_current_performance(),1)
             performance_label = QLabel(str(stock_performance) + "%")
             stock_details.addWidget(performance_label)
 
@@ -204,22 +203,22 @@ class displayStock(QWidget):
         stock_details_grid = QGridLayout()
         #initial investment value
         invested_title_label = QLabel("CASH INVESTED")
-        invested_label = QLabel(str("£" + str(self.Stock.get_cash_invested())))
+        invested_label = QLabel(str("£" + str(round(self.Stock.get_cash_invested(),2))))
         stock_details_grid.addWidget(invested_title_label,0,0)
         stock_details_grid.addWidget(invested_label,1,0)
         #current investment value
         current_value_title_label = QLabel("CURRENT INVESTMENT VALUE")
-        current_value_label = QLabel("£" + str(self.Stock.get_current_value()))
+        current_value_label = QLabel("£" + str(round(self.Stock.get_current_value(),2)))
         stock_details_grid.addWidget(current_value_title_label,0,1)
         stock_details_grid.addWidget(current_value_label,1,1)
         #investment performance
         performance_title_label = QLabel("INVESTMENT PERFORMANCE")
-        performance_label = QLabel(str(self.Stock.get_investment_performance()) + "%")
+        performance_label = QLabel(str(round(self.Stock.get_investment_performance(),1)) + "%")
         stock_details_grid.addWidget(performance_title_label,0,2)
         stock_details_grid.addWidget(performance_label,1,2)
         #Stock performance 
         stock_performance_title_label = QLabel("STOCK PERFORMANCE")
-        stock_performance_label = QLabel(str(self.Stock.get_current_performance()) + "%")
+        stock_performance_label = QLabel(str(round(self.Stock.get_current_performance(),1)) + "%")
         stock_details_grid.addWidget(stock_performance_title_label,0,3)
         stock_details_grid.addWidget(stock_performance_label,1,3)
 
@@ -255,6 +254,7 @@ class displayStock(QWidget):
         main_layout.addLayout(left_panel)
         main_layout.addLayout(right_panel)  
         self.setLayout(main_layout)
+
 
     def displayStrategiesFunc(self):
         self.display_strategies_obj = displayStrategies(self)

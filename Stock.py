@@ -10,7 +10,7 @@ class Stock:
         self.current_value = opening_value
         self.investment_value = self.cash_invested * self.current_value
         self.opening_performance = opening_performance
-        self.current_performance = self.update_performance()
+        self.current_performance = opening_performance
         self.number_stocks = 0
         
         
@@ -72,7 +72,7 @@ class Stock:
         self.opening_value = Stock.fetchOpeningValue(self.ticker, date)
         self.current_value = self.opening_value
         self.opening_performance = Stock.fetchOpeningPerformance(self.ticker, date)
-        self.current_performance = 0.0
+        self.current_performance = self.opening_performance
         self.number_stocks = 0
 
     def update_performance(self):
@@ -84,7 +84,7 @@ class Stock:
         return (current - opening) / opening
 
     def get_investment_performance(self) -> float:
-        """Calculate the performance of the investment using invested balance and  investment value."""
+        """Calculate the performance of the investment using invested balance and investment value."""
         if self.cash_invested == 0:
             return 0.0
         return ((self.investment_value - self.cash_invested)/ self.cash_invested) * 100
