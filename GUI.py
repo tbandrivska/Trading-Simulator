@@ -182,14 +182,11 @@ class displaySimulation(QWidget):
         self.hide()
 
     def run_sim(self):
-        days = 0
-        while days == 0:
-            days = self.get_days_input()
-        
-        for day in range(days):
-            self.simulator.set_timeframe(1)
+        days = self.get_days_input()
+        if 0 < days < 10000:
+            self.simulator.set_timeframe(days)
             self.simulator.run_simulation()
-            self.reloadWindow() #display daily changes, including graph
+            self.reloadWindow() 
 
     def get_days_input(self) -> int:
         text = self.days_input.text()
@@ -245,7 +242,8 @@ class displayStock(QWidget):
         stock_details_grid.addWidget(investment_value_label,1,1)
         #investment performance
         performance_title_label = QLabel("INVESTMENT PERFORMANCE")
-        performance_label = QLabel(str(round(self.Stock.get_investment_performance(),1)) + "%")
+        investment_performance = round(self.Stock.calc_investment_performance(),1)
+        performance_label = QLabel(str(investment_performance) + "%")
         stock_details_grid.addWidget(performance_title_label,0,2)
         stock_details_grid.addWidget(performance_label,1,2)
         #Stock performance 
@@ -421,6 +419,8 @@ class displaySims(QWidget):
         #remove historical data table
         if "historicalData" in sim_names:
             sim_names.remove("historicalData")
+        if "sqlite_sequence" in sim_names:
+            sim_names.remove("sqlite_sequence")
         
         conn.close()
         return sim_names

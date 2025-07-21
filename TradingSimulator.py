@@ -311,6 +311,7 @@ class TradingSimulator:
     # 2.3 configuration - timeframe
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
+        self.current_timeframe_in_days = days
         if not self.start_date:
             raise ValueError("Start date not set")
         
@@ -331,7 +332,6 @@ class TradingSimulator:
         if isinstance(self.end_date, date):
             self.end_date = self.end_date.strftime("%Y-%m-%d")
 
-        self.current_timeframe_in_days = days
         self.days_left_in_simulation = days
         self.validDates = self._validate_dates(self.start_date, self.end_date)
 
@@ -424,23 +424,29 @@ class TradingSimulator:
         
 
     # 4 simulation Execution
-    def run_simulation(self, count=1):
-        """Recursively run simulation until all days are consumed and dates are valid."""
-        print(f"loop: {count}")
-        days = self.days_left_in_simulation
-        
-        if self.validDates and days <= 0:
-            return  # base case — exit recursion
-
-        print(f"days left: {days}")
-        self.set_and_validate_timeframe(days)
+    def run_simulation(self):
+        """repeatedly run simulation for the number of days given by the user"""
+        print("initial run")
         self.sim_run()
         self.calc_days_left()
         
-        self.run_simulation(count + 1)  # recursive call
+        count = 2
+        while (not self.validDates) and 0 < self.days_left_in_simulation:
+            print(f"run: {count}")
+            self.calc_days_left()
+            print(f"days left: {self.days_left_in_simulation}")
+            self.set_timeframe(self.days_left_in_simulation)
+            self.sim_run()
+            count += 1
+
+        print("simulation runs are now completed")
 
     def sim_run(self) -> None:
         """Run simulation for the set timeframe"""
+        if self.current_timeframe_in_days <= 0:
+            print("insufficient number of days. must be at least 1")
+            return
+
         # Generate all trading dates between start and end date (inclusive)
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -458,7 +464,10 @@ class TradingSimulator:
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
                 #insert - execute strategies
-                self.record_transaction(stock, date)                           
+                self.record_transaction(stock, date)
+
+        if not self.validDates:
+            self.start_date = self.loop_restart_date()                           
 
     def calc_days_left(self):
         """calculate the number of days left over after running an incomplete simulation"""
@@ -560,23 +569,23 @@ class TradingSimulator:
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # 2 cofiguration - new simulation
-        self.new_simulation()
-        # self.set_timeframe(30)
-        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        self.set_timeframe(365)
-        print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
-
-        # # 2.5 configuration - load previous simulation
-        # self.load_prev_simulation('sim_20250721_37324')
+        # # 2 cofiguration - new simulation
+        # self.new_simulation()
         # # self.set_timeframe(30)
-        # # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # self.set_timeframe(365)
-        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 365 days.")
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
-        #3 simulation setup (purchase stocks and set strategies)
-        self.trade_each_stock()
-        print("phase 3 complete: Stocks traded and strategies set.")
+        # 2.5 configuration - load previous simulation
+        self.load_prev_simulation('sim_20250721_5146')
+        # self.set_timeframe(30)
+        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        self.set_timeframe(10000)
+        print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
+
+        # #3 simulation setup (purchase stocks and set strategies)
+        # self.trade_each_stock()
+        # print("phase 3 complete: Stocks traded and strategies set.")
 
         # 4 simulation Execution
         #self.run_simulation()
