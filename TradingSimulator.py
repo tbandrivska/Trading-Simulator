@@ -288,28 +288,43 @@ class TradingSimulator:
         else:
             raise TypeError("self.start_date must be a string, datetime, or date")
 
+        #convert start date and end date to strings
+        if isinstance(self.start_date, date):
+            self.start_date = self.start_date.strftime("%Y-%m-%d")
+        if isinstance(self.end_date, date):
+            self.end_date = self.end_date.strftime("%Y-%m-%d")
+
         self.current_timeframe_in_days = days
         self.validDates = self._validate_dates(self.start_date, self.end_date)
 
-        if not self.validDates:
+        if self.validDates:
             print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         else:
             print("timeframe exceeds available dates, time loop initiated")
         
-    def _validate_dates(self, start, end) -> bool:
+    def _validate_dates(self, start_date, end_date) -> bool:
         """Check if dates exist in database"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
         cursor.execute("""
             SELECT EXISTS(
                 SELECT 1 FROM historicalData 
-                WHERE date BETWEEN ? AND ?
+                WHERE date = ?
                 LIMIT 1
             )
-        """, (start, end))
-        exists = cursor.fetchone()[0]
+        """, (start_date,))
+        start_exists = bool(cursor.fetchone()[0])
+        cursor.execute("""
+            SELECT EXISTS(
+                SELECT 1 FROM historicalData 
+                WHERE date = ?
+                LIMIT 1
+            )
+        """, (end_date,))
+        end_exists = bool(cursor.fetchone()[0])
+
         conn.close()
-        return bool(exists)
+        return start_exists and end_exists
 
     # 3 simulation setup (purchase stocks and set strategies)
     def trade_each_stock(self) -> None:
@@ -383,11 +398,11 @@ class TradingSimulator:
             print("loop restart date: " + self.start_date)
             #continue simulation from loop restart date and repeat until complete
             count = 0
-            while (not self.validDates) or days <= 0:
+            while not self.validDates or days > 0:
                 count = count + 1
-                print("loop: count")
+                print("loop: " + str(count))
                 days = self.days_left(days)
-                print("dats left: " + str(days))
+                print("days left: " + str(days))
                 self.set_timeframe(days)
                 self.run_simulation()
 
@@ -434,7 +449,7 @@ class TradingSimulator:
                 cursor.execute("""
                             SELECT date FROM historicalData 
                             WHERE open >= ? AND open <= ? 
-                            AND ticker = ?
+                            AND stock_ticker = ?
                 """,(lowerBound ,upperBound, ticker))
                 
                 #add any dates found to the list
