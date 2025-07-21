@@ -103,13 +103,9 @@ class Balance:
             FROM {simulation_id}
         """)
         dates = cursor.fetchone()
-        cursor.close()
         conn.close()
         
         if not dates or not all(dates):
             raise ValueError(f"No valid dates found for simulation ID {simulation_id}")
         
-        #remove duplicate dates
-        dates = list(set(dates))
-
         return dates[0], dates[1]

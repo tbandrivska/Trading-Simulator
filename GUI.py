@@ -66,8 +66,8 @@ class displaySimulation(QWidget):
         if self.sim_id is None:
             self.simulator.new_simulation()
         else:
-            #self.simulator.load_simulation(current_simulation_id)
-            ...
+            self.simulator.load_prev_simulation(self.sim_id)
+            
         
         self.resize(1200, 600)
         self.setWindowTitle("SIMULATION ID: " + self.simulator.get_sim_id())
@@ -166,7 +166,7 @@ class displaySimulation(QWidget):
         self.setLayout(final_layout)
 
         #button actions
-        self.run_button.clicked.connect(lambda: self.run_sim)
+        self.run_button.clicked.connect(self.run_sim)
         self.end_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
 
     def get_stock(self, index: int) -> Stock: 
@@ -181,7 +181,7 @@ class displaySimulation(QWidget):
         self.stock_display.show()
         self.hide()
 
-    def run_sim(self, days):
+    def run_sim(self):
         days = 0
         while days == 0:
             days = self.get_days_input()
@@ -199,12 +199,12 @@ class displaySimulation(QWidget):
                 return days
         
         QMessageBox.warning(self, "Invalid Input", "Please enter a number between 1 and 9999.")
-        return 0  #Indicate invalid input
+        return 0  #Indicate invalid input    
 
     def reloadWindow(self):
         """reload window so that it dispalys changes in data"""
-        new_window = displaySimulation(self.startWindow, self.sim_id)
-        new_window.show()
+        self.new_window = displaySimulation(self.startWindow, self.sim_id)
+        self.new_window.show()
         self.close()
 
 

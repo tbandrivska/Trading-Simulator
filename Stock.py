@@ -6,9 +6,12 @@ class Stock:
         self.name = name 
         self.ticker = ticker         
         self.cash_invested = 0.0
+
         self.opening_value = opening_value
         self.current_value = opening_value
-        self.investment_value = self.cash_invested * self.current_value
+
+        self.investment_value = 0.0
+
         self.opening_performance = opening_performance
         self.current_performance = opening_performance
         self.number_stocks = 0
@@ -83,8 +86,12 @@ class Stock:
             return 0.0
         return (current - opening) / opening
 
-    def get_investment_performance(self) -> float:
-        """Calculate the performance of the investment using invested balance and investment value."""
+    def update_investment_value(self):
+        """calculate the current value of the investment using stock performance"""
+        return self.cash_invested * self.current_value
+
+    def calc_investment_performance(self) -> float:
+        """Calculate the performance of the investment using cash invested and investment value."""
         if self.cash_invested == 0:
             return 0.0
         return ((self.investment_value - self.cash_invested)/ self.cash_invested) * 100
@@ -213,7 +220,8 @@ class Stock:
 
         # update the invested balance based on the number of stocks and current value
         invested_balance: float = self.get_number_stocks() * current_value
-        self.set_cash_invested(invested_balance)
+        self.cash_invested = invested_balance
+        self.investment_value = self.update_investment_value()
 
     #methods for setting stock instance variables from a simulation
     def set_stock_from_simulation(self, simulation_id) -> None:
@@ -235,10 +243,10 @@ class Stock:
             raise ValueError(f"No simulation data found for ID {simulation_id} on {end_date} for ticker {self.ticker}")
 
         # Set instance variables
-        self.set_cash_invested(data[0])
+        self.cash_invested = data[0]
         self.investment_value = data[1]
         self.current_performance = data[2]
-        self.set_number_stocks(data[3])
+        self.number_stocks = data[3]
 
         # Set value-based fields
         self.opening_value = self.fetchOpeningValue(self.ticker, start_date)
