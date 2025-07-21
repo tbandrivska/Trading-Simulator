@@ -9,7 +9,6 @@ class Stock:
 
         self.opening_value = opening_value
         self.current_value = opening_value
-
         self.investment_value = 0.0
 
         self.opening_performance = opening_performance
@@ -218,11 +217,8 @@ class Stock:
                 (self.current_value - self.opening_value) / self.opening_value
             ) * 100.0
 
-        # update the invested balance based on the number of stocks and current value
-        invested_balance: float = self.get_number_stocks() * current_value
-        self.cash_invested = invested_balance
-        self.investment_value = self.update_investment_value()
-
+        # update the investment value based on the number of stocks and current value
+        self.investment_value = self.get_number_stocks() * current_value
     #methods for setting stock instance variables from a simulation
     def set_stock_from_simulation(self, simulation_id) -> None:
         """Set the stock instance variables based on simulation data 

@@ -199,6 +199,7 @@ class TradingSimulator:
         
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.current_simulation_id} (
+                entry_number INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT,
                 current_balance REAL,
                 total_invested_balance REAL,
@@ -206,9 +207,7 @@ class TradingSimulator:
                 cash_invested REAL,
                 investment_value REAL,
                 current_performance REAL,
-                number_of_stocks INTEGER,
-                random_number INTEGER,
-                PRIMARY KEY (date, ticker, random_number)
+                number_of_stocks INTEGER
             )
         """)
         conn.commit()
@@ -230,17 +229,14 @@ class TradingSimulator:
         # Validate table name to prevent SQL injection
         if not self.current_simulation_id or not self.current_simulation_id.isidentifier():
             raise ValueError("Invalid simulation ID for table name.")
-        
-        #Generate a unique random number for this entry
-        random_number = self.get_new_random_number()
 
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
         cursor.execute(f"""
-                INSERT INTO "{self.current_simulation_id}" 
-                (date, current_balance, total_invested_balance, ticker, cash_invested,
-                  investment_value, current_performance, number_of_stocks, random_number)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO "{self.current_simulation_id}" 
+            (date, current_balance, total_invested_balance, ticker, cash_invested,
+                investment_value, current_performance, number_of_stocks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
@@ -249,8 +245,7 @@ class TradingSimulator:
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
                 stock.get_current_performance(),
-                stock.get_number_stocks(),
-                random_number
+                stock.get_number_stocks()
             ))
         
         conn.commit()
@@ -568,7 +563,6 @@ class TradingSimulator:
         # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # self.set_timeframe(10000)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 10000 days.")
-
 
         # 2.5 configuration - load previous simulation
         self.load_prev_simulation('sim_20250721_37324')
