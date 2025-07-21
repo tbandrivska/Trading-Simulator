@@ -62,6 +62,47 @@ class TradingSimulator:
             total += stock.get_investment_value()
         return total
 
+    def set_and_validate_timeframe(self, days: int):
+        """only set the timeframe if days is within the max days range"""
+        max_days = self.calc_max_days()
+        self.set_timeframe(days)
+        while days > max_days:
+            print("Invalid number of days. Days must be between 1 and " + str(max_days))
+            days = int(input("set simulation timeframe in days: "))
+            self.set_timeframe(days)  
+
+    def calc_max_days(self) -> int:
+        """calculate the max number of days simulation can run for to avoid repetitive data.
+        This allows a the simulation to only loop 3 times max"""
+        #get the timeframe in days
+        total_days = self.current_timeframe_in_days
+        
+        #find the restart loop date and historical data end date
+        restart_loop_date = self.loop_restart_date()
+        historical_data_end_date = self.database.getEndDate() 
+
+        #convert dates to datetime.date objects if they are strings or datetime objects
+        if isinstance(restart_loop_date, str):
+            restart_loop_date = datetime.strptime(restart_loop_date, "%Y-%m-%d").date()
+        if isinstance(restart_loop_date, datetime):
+            restart_loop_date = restart_loop_date.date()
+        if isinstance(historical_data_end_date, str):
+            historical_data_end_date = datetime.strptime(historical_data_end_date, "%Y-%m-%d").date()   
+        if isinstance(historical_data_end_date, datetime):
+            historical_data_end_date = historical_data_end_date.date()  
+        if restart_loop_date is None or historical_data_end_date is None:
+            raise ValueError("Restart loop date or historical data end date is not set correctly.")        
+
+        #calculate the number of days between the restart loop date and historical data end date
+        loop_days = (historical_data_end_date - restart_loop_date).days + 1  # +1 to include end date
+
+        #calculate maximum days so it only allows simulation loop to occur 3 times
+        max_days = total_days + (loop_days * 3)
+
+        if max_days < 30:
+            return 30
+        
+        return max_days
 
     # 1 initialisation
     def __init__(self, start_balance: float = 10000):
@@ -273,15 +314,6 @@ class TradingSimulator:
     
 
     # 2.3 configuration - timeframe
-    def set_and_validate_timeframe(self, days: int):
-        """only set the timeframe if days is within the max days range"""
-        max_days = self.calc_max_days()
-        self.set_timeframe(days)
-        while days > max_days:
-            print("Invalid number of days. Days must be between 1 and " + str(max_days))
-            days = int(input("set simulation timeframe in days: "))
-            self.set_timeframe(days)    
-
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
         if not self.start_date:
@@ -335,84 +367,7 @@ class TradingSimulator:
         end_exists = bool(cursor.fetchone()[0])
 
         conn.close()
-        return start_exists and end_exists
-
-    def calc_max_days(self) -> int:
-        """calculate the max number of days simulation can run for to avoid repetitive data.
-        This allows a the simulation to only loop 3 times max"""
-        #get the timeframe in days
-        total_days = self.current_timeframe_in_days
-        
-        #find the restart loop date and historical data end date
-        restart_loop_date = self.loop_restart_date()
-        historical_data_end_date = self.database.getEndDate() 
-
-        #convert dates to datetime.date objects if they are strings or datetime objects
-        if isinstance(restart_loop_date, str):
-            restart_loop_date = datetime.strptime(restart_loop_date, "%Y-%m-%d").date()
-        if isinstance(restart_loop_date, datetime):
-            restart_loop_date = restart_loop_date.date()
-        if isinstance(historical_data_end_date, str):
-            historical_data_end_date = datetime.strptime(historical_data_end_date, "%Y-%m-%d").date()   
-        if isinstance(historical_data_end_date, datetime):
-            historical_data_end_date = historical_data_end_date.date()  
-        if restart_loop_date is None or historical_data_end_date is None:
-            raise ValueError("Restart loop date or historical data end date is not set correctly.")        
-
-        #calculate the number of days between the restart loop date and historical data end date
-        loop_days = (historical_data_end_date - restart_loop_date).days + 1  # +1 to include end date
-
-        #calculate maximum days so it only allows simulation loop to occur 3 times
-        max_days = total_days + (loop_days * 3)
-
-        if max_days < 30:
-            return 30
-        
-        return max_days
-
-    def loop_restart_date(self):
-        """If a time frame is longer than we have days for, use the final date we have
-        to locate a previous date with similar values. Now, everytime the final date is 
-        reached, we continue from this date with similar values"""
-        
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        
-        finalDate = self.database.getEndDate() 
-        value_range = 0.05
-        dates = []
-
-        #find all valid dates where stocks have a similar value 
-        while len(dates) == 0:
-            for Stock in self.stocks.values():
-                ticker = Stock.get_ticker()
-                OpeningValue = Stock.fetchOpeningValue(ticker, finalDate)
-                upperBound = OpeningValue * (1+value_range)
-                lowerBound = OpeningValue * (1-value_range)
-                cursor.execute("""
-                            SELECT date FROM historicalData 
-                            WHERE open >= ? AND open <= ? 
-                            AND stock_ticker = ?
-                """,(lowerBound ,upperBound, ticker))
-                
-                #add any dates found to the list
-                results = cursor.fetchall()
-                for row in results:
-                    dates.append(row[0])
-
-            #find the most frequently occuring date
-            date_counts = Counter(dates) # Count occurrences
-            most_common_date, count = date_counts.most_common(1)[0]
-
-            if len(dates) < 10 or count < 3:
-                #if not enough dates are returned or the most frequently occuring date occurs less than 3 times 
-                    # increase the range by 5% and restart the process
-                value_range = value_range + 0.05
-                dates = []
-        
-        conn.close()
-        print("loop restart date: " + str(most_common_date))
-        return most_common_date     
+        return start_exists and end_exists  
 
 
     # 3 simulation setup (purchase stocks and set strategies)
@@ -530,7 +485,49 @@ class TradingSimulator:
 
         self.days_left_in_simulation = days_left
 
+    def loop_restart_date(self):
+        """If a time frame is longer than we have days for, use the final date we have
+        to locate a previous date with similar values. Now, everytime the final date is 
+        reached, we continue from this date with similar values"""
+        
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        finalDate = self.database.getEndDate() 
+        value_range = 0.05
+        dates = []
 
+        #find all valid dates where stocks have a similar value 
+        while len(dates) == 0:
+            for Stock in self.stocks.values():
+                ticker = Stock.get_ticker()
+                OpeningValue = Stock.fetchOpeningValue(ticker, finalDate)
+                upperBound = OpeningValue * (1+value_range)
+                lowerBound = OpeningValue * (1-value_range)
+                cursor.execute("""
+                            SELECT date FROM historicalData 
+                            WHERE open >= ? AND open <= ? 
+                            AND stock_ticker = ?
+                """,(lowerBound ,upperBound, ticker))
+                
+                #add any dates found to the list
+                results = cursor.fetchall()
+                for row in results:
+                    dates.append(row[0])
+
+            #find the most frequently occuring date
+            date_counts = Counter(dates) # Count occurrences
+            most_common_date, count = date_counts.most_common(1)[0]
+
+            if len(dates) < 10 or count < 3:
+                #if not enough dates are returned or the most frequently occuring date occurs less than 3 times 
+                    # increase the range by 5% and restart the process
+                value_range = value_range + 0.05
+                dates = []
+        
+        conn.close()
+        print("loop restart date: " + str(most_common_date))
+        return most_common_date
 
 
     #  5 simulation termination
@@ -567,17 +564,17 @@ class TradingSimulator:
        
         # # 2 cofiguration - new simulation
         # self.new_simulation()
-        # # self.set_and_validate_timeframe(30)
+        # # self.set_timeframe(30)
         # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        # self.set_and_validate_timeframe(10000)
+        # self.set_timeframe(10000)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 10000 days.")
 
 
         # 2.5 configuration - load previous simulation
         self.load_prev_simulation('sim_20250721_37324')
-        # self.set_and_validate_timeframe(30)
+        # self.set_timeframe(30)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
-        self.set_and_validate_timeframe(10000)
+        self.set_timeframe(10000)
         print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
         # 3 simulation setup (purchase stocks and set strategies)
