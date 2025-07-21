@@ -112,7 +112,7 @@ class TradingSimulatorApp(QMainWindow):
             self.simulator.new_simulation(sim_id, days=days)
             
             self.simulator.trade_a_stock(stock, amount)
-            self.simulator.run_simulation()
+            self.simulator.sim_run()
             self._update_ui()
         except sqlite3.Error as e:
             self._show_error(f"Database error: {str(e)}")

@@ -85,6 +85,7 @@ class TradingSimulator:
         self.performance_history = []
 
         self.current_timeframe_in_days = 0
+        self.days_left_in_simulation = 0
         self.prev_random_numbers = [] 
         self.validDates = True
         
@@ -272,6 +273,15 @@ class TradingSimulator:
     
 
     # 2.3 configuration - timeframe
+    def set_and_validate_timeframe(self, days: int):
+        """only set the timeframe if days is within the max days range"""
+        max_days = self.calc_max_days()
+        self.set_timeframe(days)
+        while days > max_days:
+            print("Invalid number of days. Days must be between 1 and " + str(max_days))
+            days = int(input("set simulation timeframe in days: "))
+            self.set_timeframe(days)    
+
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
         if not self.start_date:
@@ -295,6 +305,7 @@ class TradingSimulator:
             self.end_date = self.end_date.strftime("%Y-%m-%d")
 
         self.current_timeframe_in_days = days
+        self.days_left_in_simulation = days
         self.validDates = self._validate_dates(self.start_date, self.end_date)
 
         if self.validDates:
@@ -302,7 +313,7 @@ class TradingSimulator:
         else:
             print("timeframe exceeds available dates, time loop initiated")
         
-    def _validate_dates(self, start_date, end_date) -> bool:
+    def _validate_dates(self, start_date, end_date) -> int:
         """Check if dates exist in database"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -325,6 +336,84 @@ class TradingSimulator:
 
         conn.close()
         return start_exists and end_exists
+
+    def calc_max_days(self) -> int:
+        """calculate the max number of days simulation can run for to avoid repetitive data.
+        This allows a the simulation to only loop 3 times max"""
+        #get the timeframe in days
+        total_days = self.current_timeframe_in_days
+        
+        #find the restart loop date and historical data end date
+        restart_loop_date = self.loop_restart_date()
+        historical_data_end_date = self.database.getEndDate() 
+
+        #convert dates to datetime.date objects if they are strings or datetime objects
+        if isinstance(restart_loop_date, str):
+            restart_loop_date = datetime.strptime(restart_loop_date, "%Y-%m-%d").date()
+        if isinstance(restart_loop_date, datetime):
+            restart_loop_date = restart_loop_date.date()
+        if isinstance(historical_data_end_date, str):
+            historical_data_end_date = datetime.strptime(historical_data_end_date, "%Y-%m-%d").date()   
+        if isinstance(historical_data_end_date, datetime):
+            historical_data_end_date = historical_data_end_date.date()  
+        if restart_loop_date is None or historical_data_end_date is None:
+            raise ValueError("Restart loop date or historical data end date is not set correctly.")        
+
+        #calculate the number of days between the restart loop date and historical data end date
+        loop_days = (historical_data_end_date - restart_loop_date).days + 1  # +1 to include end date
+
+        #calculate maximum days so it only allows simulation loop to occur 3 times
+        max_days = total_days + (loop_days * 3)
+
+        if max_days < 30:
+            return 30
+        
+        return max_days
+
+    def loop_restart_date(self):
+        """If a time frame is longer than we have days for, use the final date we have
+        to locate a previous date with similar values. Now, everytime the final date is 
+        reached, we continue from this date with similar values"""
+        
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        finalDate = self.database.getEndDate() 
+        value_range = 0.05
+        dates = []
+
+        #find all valid dates where stocks have a similar value 
+        while len(dates) == 0:
+            for Stock in self.stocks.values():
+                ticker = Stock.get_ticker()
+                OpeningValue = Stock.fetchOpeningValue(ticker, finalDate)
+                upperBound = OpeningValue * (1+value_range)
+                lowerBound = OpeningValue * (1-value_range)
+                cursor.execute("""
+                            SELECT date FROM historicalData 
+                            WHERE open >= ? AND open <= ? 
+                            AND stock_ticker = ?
+                """,(lowerBound ,upperBound, ticker))
+                
+                #add any dates found to the list
+                results = cursor.fetchall()
+                for row in results:
+                    dates.append(row[0])
+
+            #find the most frequently occuring date
+            date_counts = Counter(dates) # Count occurrences
+            most_common_date, count = date_counts.most_common(1)[0]
+
+            if len(dates) < 10 or count < 3:
+                #if not enough dates are returned or the most frequently occuring date occurs less than 3 times 
+                    # increase the range by 5% and restart the process
+                value_range = value_range + 0.05
+                dates = []
+        
+        conn.close()
+        print("loop restart date: " + str(most_common_date))
+        return most_common_date     
+
 
     # 3 simulation setup (purchase stocks and set strategies)
     def trade_each_stock(self) -> None:
@@ -385,28 +474,22 @@ class TradingSimulator:
         
 
     # 4 simulation Execution
-    def time_loop(self, days: int):
-        """When there is not enough dates to run a simulation, repeat the simulation 
-        from a starting point (loop restart date) to simulate a continuous timeframe"""
-        if self.validDates:
-            self.run_simulation()
-        else:
-            #Run simulation through all available dates
-            self.end_date = self.database.getEndDate()
-            self.run_simulation()
-            self.start_date = self.loop_restart_date()
-            print("loop restart date: " + self.start_date)
-            #continue simulation from loop restart date and repeat until complete
-            count = 0
-            while not self.validDates or days > 0:
-                count = count + 1
-                print("loop: " + str(count))
-                days = self.days_left(days)
-                print("days left: " + str(days))
-                self.set_timeframe(days)
-                self.run_simulation()
+    def run_simulation(self, count=1):
+        """Recursively run simulation until all days are consumed and dates are valid."""
+        print(f"loop: {count}")
+        days = self.days_left_in_simulation
+        
+        if self.validDates and days <= 0:
+            return  # base case — exit recursion
 
-    def run_simulation(self) -> None:
+        print(f"days left: {days}")
+        self.set_and_validate_timeframe(days)
+        self.sim_run()
+        self.calc_days_left()
+        
+        self.run_simulation(count + 1)  # recursive call
+
+    def sim_run(self) -> None:
         """Run simulation for the set timeframe"""
         # Generate all trading dates between start and end date (inclusive)
         conn = sqlite3.connect('data.db')
@@ -427,80 +510,27 @@ class TradingSimulator:
                 #insert - execute strategies
                 self.record_transaction(stock, date)                           
 
-    def loop_restart_date(self):
-        """If a time frame is longer than we have days for, use the final date we have
-        to locate a previous date with similar values. Now, everytime the final date is 
-        reached, we continue from this date with similar values"""
-        
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        
-        finalDate = self.database.getEndDate() 
-        value_range = 0.05
-        dates = []
-
-        #find all valid dates where stocks have a similar value 
-        while len(dates) == 0:
-            for Stock in self.stocks.values():
-                ticker = Stock.get_ticker()
-                OpeningValue = Stock.fetchOpeningValue(ticker, finalDate)
-                upperBound = OpeningValue * (1+value_range)
-                lowerBound = OpeningValue * (1-value_range)
-                cursor.execute("""
-                            SELECT date FROM historicalData 
-                            WHERE open >= ? AND open <= ? 
-                            AND stock_ticker = ?
-                """,(lowerBound ,upperBound, ticker))
-                
-                #add any dates found to the list
-                results = cursor.fetchall()
-                for row in results:
-                    dates.append(row[0])
-
-            #find the most frequently occuring date
-            date_counts = Counter(dates) # Count occurrences
-            most_common_date, count = date_counts.most_common(1)[0]
-
-            if len(dates) < 10 or count < 3:
-                #if not enough dates are returned or the most frequently occuring date occurs less than 3 times 
-                    # increase the range by 5% and restart the process
-                value_range = value_range + 0.05
-                dates = []
-        
-        conn.close()
-        return most_common_date     
-
-    def days_left(self, days: int):
+    def calc_days_left(self):
         """calculate the number of days left over after running an incomplete simulation"""
-        if days <= 0:
-            return 0
-        
-        if self.start_date is None:
-            raise ValueError("self.start_date cannot be None")
-        if isinstance(self.start_date, str):    
-            start_date = datetime.strptime(self.start_date, "%Y-%m-%d").date()
-        elif isinstance(self.start_date, date):
-            start_date = self.start_date
-        else:
-            raise TypeError("self.start_date must be a string or date")
-        
-        if self.end_date is None:
-            raise ValueError("self.end_date cannot be None")
-        if isinstance(self.end_date, str):
-            end_date = datetime.strptime(self.end_date, "%Y-%m-%d").date()
-        elif isinstance(self.end_date, date):
-            end_date = self.end_date
-        else:
-            raise TypeError("self.end_date must be a string or date")
-        
-        #calculate number of days within a the time frame 
-        total_days = (end_date - start_date).days + 1  # +1 to include end date
+        #calculate incomplete simulation time frame
+        start_date = self.start_date
+        end_date = self.database.getEndDate()
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        if start_date is None or end_date is None:
+            raise ValueError("Start date or end date is not set correctly.")
 
-        #calculate days left over (if there is any)
-        if days >= total_days:
-            return days - total_days
-        else:
-            return 0
+        sim_days = (end_date - start_date).days + 1  # +1 to include end date 
+
+        days_left = self.current_timeframe_in_days - sim_days
+        if days_left < 0:
+            days_left = 0
+
+        self.days_left_in_simulation = days_left
+
+
 
 
     #  5 simulation termination
@@ -514,7 +544,7 @@ class TradingSimulator:
             self.new_simulation()
             self.set_timeframe(days)
             self.trade_each_stock
-            self.run_simulation
+            self.sim_run
             self.end_simulation(False,0)
         else:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
@@ -535,26 +565,28 @@ class TradingSimulator:
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # 2 cofiguration - new simulation
-        self.new_simulation()
-        # self.set_timeframe(30)
-        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        self.set_timeframe(10000)
-        print("phase 2 complete: New simulation created with ID 'test_simulation' for 10000 days.")
+        # # 2 cofiguration - new simulation
+        # self.new_simulation()
+        # # self.set_and_validate_timeframe(30)
+        # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        # self.set_and_validate_timeframe(10000)
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 10000 days.")
 
 
-        # # 2.5 configuration - load previous simulation
-        # self.load_prev_simulation('sim_20250712_39995')
-        # self.set_timeframe(30)
+        # 2.5 configuration - load previous simulation
+        self.load_prev_simulation('sim_20250721_37324')
+        # self.set_and_validate_timeframe(30)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        self.set_and_validate_timeframe(10000)
+        print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
         # 3 simulation setup (purchase stocks and set strategies)
-        self.trade_each_stock()
-        print("phase 3 complete: Stocks traded and strategies set.")
+        # self.trade_each_stock()
+        # print("phase 3 complete: Stocks traded and strategies set.")
 
         # 4 simulation Execution
         #self.run_simulation()
-        self.time_loop(self.current_timeframe_in_days)
+        self.run_simulation()
         print("phase 4 complete: Simulation executed.")
 
         # 5 simulation termination
