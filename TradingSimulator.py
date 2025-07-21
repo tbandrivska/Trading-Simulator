@@ -499,30 +499,33 @@ class TradingSimulator:
                 OpeningValue = Stock.fetchOpeningValue(ticker, finalDate)
                 upperBound = OpeningValue * (1+value_range)
                 lowerBound = OpeningValue * (1-value_range)
+
                 cursor.execute("""
                             SELECT date FROM historicalData 
                             WHERE open >= ? AND open <= ? 
                             AND stock_ticker = ?
-                """,(lowerBound ,upperBound, ticker))
+                            AND date < ?
+                """,(lowerBound ,upperBound, ticker, finalDate))
                 
                 #add any dates found to the list
-                results = cursor.fetchall()
-                for row in results:
-                    dates.append(row[0])
+                dates = [row[0] for row in cursor.fetchall()]
 
-            #find the most frequently occuring date
-            date_counts = Counter(dates) # Count occurrences
-            most_common_date, count = date_counts.most_common(1)[0]
 
-            if len(dates) < 10 or count < 3:
-                #if not enough dates are returned or the most frequently occuring date occurs less than 3 times 
-                    # increase the range by 5% and restart the process
+            #Convert to datetime objects
+            date_objects = [datetime.strptime(date, '%Y-%m-%d') for date in dates]
+            #Find the earliest
+            earliest_date = min(date_objects)
+            #Optional: convert back to string
+            earliest_date_str = earliest_date.strftime('%Y-%m-%d')
+            
+            if len(dates) < 10:
+                #if not enough dates are returned increase the range by 5% and restart the process
                 value_range = value_range + 0.05
                 dates = []
         
         conn.close()
-        print("loop restart date: " + str(most_common_date))
-        return most_common_date
+        print("loop restart date: " + earliest_date_str)
+        return earliest_date_str
 
 
     #  5 simulation termination
@@ -557,23 +560,23 @@ class TradingSimulator:
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # # 2 cofiguration - new simulation
-        # self.new_simulation()
-        # # self.set_timeframe(30)
-        # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        # self.set_timeframe(10000)
-        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 10000 days.")
-
-        # 2.5 configuration - load previous simulation
-        self.load_prev_simulation('sim_20250721_37324')
+        # 2 cofiguration - new simulation
+        self.new_simulation()
         # self.set_timeframe(30)
-        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
-        self.set_timeframe(10000)
-        print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        self.set_timeframe(365)
+        print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
-        # 3 simulation setup (purchase stocks and set strategies)
-        # self.trade_each_stock()
-        # print("phase 3 complete: Stocks traded and strategies set.")
+        # # 2.5 configuration - load previous simulation
+        # self.load_prev_simulation('sim_20250721_37324')
+        # # self.set_timeframe(30)
+        # # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        # self.set_timeframe(365)
+        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 365 days.")
+
+        #3 simulation setup (purchase stocks and set strategies)
+        self.trade_each_stock()
+        print("phase 3 complete: Stocks traded and strategies set.")
 
         # 4 simulation Execution
         #self.run_simulation()
@@ -583,13 +586,11 @@ class TradingSimulator:
         # 5 simulation termination
         self.end_simulation(new_simulation=False, days = 0)
         print("phase 5 complete: Simulation ended and performance plotted.")
-        self.strategies.activate('take_profit', threshold=0.2)
-
+        
 
 
 if __name__ == "__main__":
     simulation = TradingSimulator(start_balance=10000)
     simulation.testRun()
-# In TradingSimulation.py
-from matplotlib.figure import Figure
+
 

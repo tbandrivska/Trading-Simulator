@@ -206,8 +206,8 @@ class Stock:
     # update the stock variables that change daily: current value, performance and invested balance
     def dailyStockUpdate(self, date) -> None:
         #update the current value of the stock based on the date
-        current_value: float = Stock.fetchClosingValue(self.ticker, date)
-        self.set_current_value(current_value)
+        closing_value: float = Stock.fetchClosingValue(self.ticker, date)
+        self.set_current_value(closing_value)
     
         #update the performance of the stock
         if self.opening_value == 0:
@@ -218,7 +218,7 @@ class Stock:
             ) * 100.0
 
         # update the investment value based on the number of stocks and current value
-        self.investment_value = self.get_number_stocks() * current_value
+        self.investment_value = self.get_number_stocks() * closing_value
     #methods for setting stock instance variables from a simulation
     def set_stock_from_simulation(self, simulation_id) -> None:
         """Set the stock instance variables based on simulation data 
