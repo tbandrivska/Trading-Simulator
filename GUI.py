@@ -277,6 +277,7 @@ class displayStock(QWidget):
         #implement trading strategies - trigger displayStrategies
         self.trading_strat_button = QPushButton("IMPLEMENT TRADING STRATEGIES")
         right_panel.addWidget(self.trading_strat_button)
+        self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
         #self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
 
         #end trade
@@ -292,10 +293,10 @@ class displayStock(QWidget):
 
 
     def displayStrategiesFunc(self):
-        self.display_strategies_obj = displayStrategies(self)
-        self.display_strategies_obj.show()
-        self.hide()
-
+        from TradingStrategiesWidget import TradingStrategiesWidget
+        self.strat_widget = TradingStrategiesWidget(self.simulator, self)
+        self.strat_widget.show()
+        
     def endTrade(self):
         self.close()
         #insert function - update simWindow data
