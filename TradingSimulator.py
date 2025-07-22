@@ -216,16 +216,10 @@ class TradingSimulator:
         conn.close()  
 
     def record_portfolio(self, date):
-        """Record the state of stocks and balance on a specific day"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-
+        """Record the state of all stocks and balance on a specific day"""
         for stock in self.stocks.values():
             self.record_transaction(stock,date)
         
-        conn.commit()
-        conn.close()
-
     def record_transaction(self, stock, date):
         """Record transaction data into database after each stock transaction"""
         # Validate table name to prevent SQL injection
@@ -247,7 +241,7 @@ class TradingSimulator:
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
                 stock.get_investment_performance(),
-                stock.get_current_performance(),
+                stock.get_current_stock_performance(),
                 stock.get_number_stocks()
             ))
         

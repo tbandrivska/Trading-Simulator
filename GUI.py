@@ -388,7 +388,7 @@ class TradeWidget(QWidget):
             return
 
         num_stocks = int(stock_input)
-        stock_price = self.stockWindow.Stock.get_current_value()
+        stock_price = self.stockWindow.Stock.get_current_stock_value()
         total_price = num_stocks * stock_price
         cash_balance = self.stockWindow.simulator.balance.getCurrentBalance()
 

@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, date
 
 class Stock:
     def __init__(self, name: str, ticker: str, opening_value: float, opening_performance: float = 0.0):
@@ -124,7 +124,7 @@ class Stock:
         with sqlite3.connect("data.db") as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
-                SELECT cash_invested, investment_value, current_performance, number_of_stocks
+                SELECT cash_invested, investment_value, investment_performance, current_performance, number_of_stocks
                 FROM {simulation_id}
                 WHERE date = ? AND ticker = ?
             """, (end_date, self.ticker))
@@ -136,8 +136,9 @@ class Stock:
         # Set instance variables
         self.cash_invested = data[0]
         self.investment_value = data[1]
-        self.current_stock_performance = data[2]
-        self.number_stocks = data[3]
+        self.investment_performance = data[2]
+        self.current_stock_performance = data[3]
+        self.number_stocks = data[4]
 
         # Set value-based fields
         self.opening_stock_value = self.fetchOpeningValue(self.ticker, start_date)
@@ -191,14 +192,23 @@ class Stock:
         return data[0] if openOrClose.lower() == "open" else data[1]
     
     @staticmethod
-    def fetchOpeningPerformance(ticker: str, date) -> float:
+    def fetchOpeningPerformance(ticker: str, todays_date) -> float:
         """calculate the opening performance of the stock 
         based on historical data within the the last year."""
         
-        #find start date from a year ago based on current date
-        startDate = datetime.strptime(date, "%Y-%m-%d").replace(year=datetime.now().year - 1).strftime("%Y-%m-%d")
-        #if the start date is not available, use the earliest date in the database
-        if not Stock.fetchDates(startDate, date, ticker):
+        
+        #find date one year before the given date
+        if isinstance(todays_date, str):
+            todays_date = datetime.strptime(todays_date, "%Y-%m-%d").date()
+            startDate = todays_date - timedelta(days=365)
+        elif isinstance(todays_date, datetime):
+            startDate = todays_date - timedelta(days=365)
+        elif isinstance(todays_date, date):
+            startDate = todays_date - timedelta(days=365)
+        else:
+            raise TypeError("Date must be a string or datetime or date object.")
+        #if the start date is before the first date in the database, set it to the first date
+        if not Stock.fetchDates(startDate, todays_date, ticker):
             startDate = Stock.get_start_and_end_dates('historicalData')[0]
         
         conn = sqlite3.connect("data.db")
@@ -209,14 +219,14 @@ class Stock:
             FROM historicalData 
             WHERE stock_ticker = ? AND date BETWEEN ? AND ?
             ORDER BY date
-        """, (ticker, startDate, date))
+        """, (ticker, startDate, todays_date))
         
         data = cursor.fetchall()
         cursor.close()
         conn.close()
 
         if not data:
-            raise ValueError(f"No historical data found for {ticker} between {startDate} and {date}")
+            raise ValueError(f"No historical data found for {ticker} between {startDate} and {todays_date}")
 
         opening_value = data[0][0]
         closing_value = data[-1][1] 

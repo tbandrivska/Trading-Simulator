@@ -34,7 +34,7 @@ class Balance:
 
     #purchase method buys stocks and removes the amount from the balance
     def purchase(self, Stock, amount:int):
-        price = Stock.get_current_value() * amount
+        price = Stock.get_current_stock_value() * amount
         if self.currentBalance >= price:
             self.currentBalance -= price
             self.totalInvestedBalance += price
@@ -48,7 +48,7 @@ class Balance:
     #sell method sells stocks and adds the profit/loss to the balance
     def sell(self, Stock, amount:int):
         if Stock.get_number_stocks() >= amount:
-            price = Stock.get_current_value() * amount
+            price = Stock.get_current_stock_value() * amount
             self.currentBalance += price
             self.totalInvestedBalance -= price
             Stock.set_cash_invested(Stock.get_cash_invested() - price)
