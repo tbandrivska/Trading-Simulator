@@ -1,17 +1,19 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QPushButton, QLabel, QMessageBox
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QCheckBox, QPushButton, QLabel, QMessageBox
 
-class TradingStrategiesWidget(QWidget):
+class TradingStrategiesWidget(QDialog):
     def __init__(self, simulator, parent=None):
         super().__init__(parent)
         self.simulator = simulator
         self.setWindowTitle("Select Trading Strategies")
         self.layout = QVBoxLayout(self)
         self.checkboxes = {}
+        self.setMinimumSize(300, 200)  
+        self.resize(400, 300)
 
-        # Add a label
+        
         self.layout.addWidget(QLabel("Select strategies to activate:"))
 
-        # Add a checkbox for each strategy
+        # checkboxes for each strategy
         for name, config in self.simulator.strategies.strategies.items():
             desc = config.get('description', name)
             cb = QCheckBox(desc)
@@ -19,7 +21,7 @@ class TradingStrategiesWidget(QWidget):
             self.layout.addWidget(cb)
             self.checkboxes[name] = cb
 
-        # Add a save button
+        # save button
         save_btn = QPushButton("Save Strategies")
         save_btn.clicked.connect(self.save_strategies)
         self.layout.addWidget(save_btn)

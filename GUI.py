@@ -295,8 +295,8 @@ class displayStock(QWidget):
     def displayStrategiesFunc(self):
         from TradingStrategiesWidget import TradingStrategiesWidget
         self.strat_widget = TradingStrategiesWidget(self.simulator, self)
-        self.strat_widget.show()
-        
+        self.strat_widget.exec()
+
     def endTrade(self):
         self.close()
         #insert function - update simWindow data
