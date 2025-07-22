@@ -102,11 +102,11 @@ class displaySimulation(QWidget):
             stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             stock_button.clicked.connect(lambda _, s=Stock: self.displayStockFunc(s))
 
-            stock_performance = round(Stock.get_current_performance(),1)
+            stock_performance = round(Stock.get_current_stock_performance(),1)
             performance_label = QLabel(str(stock_performance) + "%")
             stock_details.addWidget(performance_label)
 
-            stock_value = round(Stock.get_current_value(),2)
+            stock_value = round(Stock.get_current_stock_value(),2)
             value_label = QLabel("£" + str(stock_value))
             stock_details.addWidget(value_label)
             

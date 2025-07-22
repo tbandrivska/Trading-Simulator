@@ -120,7 +120,7 @@ class TradingSimulatorApp(QMainWindow):
         # Update summary
         balance = self.simulator.balance.getCurrentBalance()
         invested = sum(
-            s.get_current_value() * s.get_number_stocks() 
+            s.get_current_stock_value() * s.get_number_stocks() 
             for s in self.simulator.stocks.values()
         )
         print(f"DEBUG: balance={balance}, invested={invested}")

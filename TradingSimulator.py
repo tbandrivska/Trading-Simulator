@@ -374,7 +374,7 @@ class TradingSimulator:
             stock: Stock = self.stocks[ticker]
             while trading:
                 print("Balance: " + str(self.balance.getCurrentBalance()))
-                print(stock.get_name() + " costs: " + str(stock.get_current_value()))
+                print(stock.get_name() + " costs: " + str(stock.get_current_stock_value()))
                 print("Would you like to purchase or sell " + stock.get_name() + "?(yes/no)")
                 user_input = input().strip().lower()
                 if user_input == "yes":
@@ -403,7 +403,7 @@ class TradingSimulator:
         stock = self.stocks[ticker]
 
         # Check if the stock has been initialized
-        if stock.get_current_value() is None:
+        if stock.get_current_stock_value() is None:
             raise ValueError(f"Stock {ticker} has not been initialized with a current value")
 
         if amount > 0:
