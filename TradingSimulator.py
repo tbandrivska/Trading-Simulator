@@ -104,6 +104,7 @@ class TradingSimulator:
         
         return max_days
 
+
     # 1 initialisation
     def __init__(self, start_balance: float = 10000):
         """Initialise simulation with balance and stocks"""
@@ -553,8 +554,6 @@ class TradingSimulator:
         else:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
             #self.plot_performance()
-    
-
         
 
       
@@ -569,26 +568,25 @@ class TradingSimulator:
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # # 2 cofiguration - new simulation
-        # self.new_simulation()
-        # # self.set_timeframe(30)
-        # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        # self.set_timeframe(365)
-        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
-
-        # 2.5 configuration - load previous simulation
-        self.load_prev_simulation('sim_20250721_5146')
+        # 2 cofiguration - new simulation
+        self.new_simulation()
         # self.set_timeframe(30)
-        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
-        self.set_timeframe(10000)
-        print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        self.set_timeframe(365)
+        print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
-        # #3 simulation setup (purchase stocks and set strategies)
-        # self.trade_each_stock()
-        # print("phase 3 complete: Stocks traded and strategies set.")
+        # # 2.5 configuration - load previous simulation
+        # self.load_prev_simulation('sim_20250721_5146')
+        # # self.set_timeframe(30)
+        # # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        # self.set_timeframe(10000)
+        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
+
+        #3 simulation setup (purchase stocks and set strategies)
+        self.trade_each_stock()
+        print("phase 3 complete: Stocks traded and strategies set.")
 
         # 4 simulation Execution
-        #self.run_simulation()
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
 

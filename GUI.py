@@ -186,7 +186,7 @@ class displaySimulation(QWidget):
         if 0 < days < 10000:
             self.simulator.set_timeframe(days)
             self.simulator.run_simulation()
-            self.reloadWindow() 
+            self.reloadSimWindow() 
 
     def get_days_input(self) -> int:
         text = self.days_input.text()
@@ -198,7 +198,7 @@ class displaySimulation(QWidget):
         QMessageBox.warning(self, "Invalid Input", "Please enter a number between 1 and 9999.")
         return 0  #Indicate invalid input    
 
-    def reloadWindow(self):
+    def reloadSimWindow(self):
         """reload window so that it dispalys changes in data"""
         self.new_window = displaySimulation(self.startWindow, self.sim_id)
         self.new_window.show()
@@ -306,6 +306,8 @@ class TradeWidget(QWidget):
     def __init__(self, stockWindow):
         super().__init__()
         self.stockWindow = stockWindow
+        self.Stock = stockWindow.Stock
+        self.simulator = stockWindow.simulator
         self.stock_inputs = {}
         self.price_outputs = {}
         self.balance_outputs = {}
@@ -335,12 +337,12 @@ class TradeWidget(QWidget):
         widget = QWidget()
 
         lhs_layout = QVBoxLayout()
-        self.num_of_stock_label = QLabel("NUMBER OF STOCK:")
-        self.price_label = QLabel("PRICE:")
-        self.balance_label = QLabel("BALANCE AFTER:")
-        lhs_layout.addWidget(self.num_of_stock_label)
-        lhs_layout.addWidget(self.price_label)
-        lhs_layout.addWidget(self.balance_label)
+        num_of_stock_label = QLabel("NUMBER OF STOCK:")
+        price_label = QLabel("PRICE:")
+        balance_label = QLabel("BALANCE AFTER:")
+        lhs_layout.addWidget(num_of_stock_label)
+        lhs_layout.addWidget(price_label)
+        lhs_layout.addWidget(balance_label)
 
         rhs_layout = QVBoxLayout()
         stock_input = QLineEdit()
@@ -367,8 +369,12 @@ class TradeWidget(QWidget):
         combined_layout.addLayout(lhs_layout)
         combined_layout.addLayout(rhs_layout)
         
-        final_layout = QVBoxLayout()
+        #confirm trade button
         confirm_button = QPushButton(f"CONFIRM {mode}")
+        #confirm_button.clicked.connect(self.trade_stock(stock_input))
+        confirm_button.clicked.connect(lambda _, m=mode: self.trade_stock(m))
+
+        final_layout = QVBoxLayout()
         final_layout.addLayout(combined_layout)
         final_layout.addWidget(confirm_button)
         widget.setLayout(final_layout)
@@ -387,18 +393,39 @@ class TradeWidget(QWidget):
 
         if mode == "PURCHASE":
             new_balance = cash_balance - total_price
-        if mode == "SELL":
+        elif mode == "SELL":
             new_balance = cash_balance + total_price
         
         self.price_outputs[mode].setText(f"£{total_price:,.2f}")
         self.balance_outputs[mode].setText(f"£{new_balance:,.2f}")
-        
-        # self.price_output.update()
-        # self.balance_output.update()
 
-        # print("price_output visible:", self.price_output.isVisible())
-        # print("price_output enabled:", self.price_output.isEnabled())
-        
+    def trade_stock(self, mode):
+        text = self.stock_inputs[mode].text()
+        if not text.strip().isdigit():
+            print("Invalid input: please enter a number")
+            #open micro window: Invalid input
+            return
+
+        amount = int(text)
+        if mode == "SELL":
+            amount = -amount
+
+        ticker = self.Stock.get_ticker()
+        confirmed = self.simulator.trade_a_stock(ticker, amount)
+        if not confirmed:
+            print("trade unsuccesful")
+            #open micro window: trade unsuccesful
+        else:
+            print("trade succesful")
+            #open micro window: trade succesful
+            #open and close stock window to update change
+            self.reloadStockWindow()
+
+    def reloadStockWindow(self):
+        """reload window so that it dispalys changes in data"""
+        self.new_window = displayStock(self.stockWindow.simWindow, self.stockWindow.simulator, self.Stock)
+        self.new_window.show()
+        self.close()
 
 
 class displayStrategies(QWidget):
