@@ -76,8 +76,8 @@ class displaySimulation(QWidget):
         cash_balance = self.simulator.balance.getCurrentBalance()
         invested_balance = self.simulator.balance.getTotalInvestedBalance()
         total_balance = cash_balance + invested_balance
-        total_balance_label = QLabel("TOTAL BALANCE: £" + str(total_balance))
-        cash_balance_label = QLabel("CASH BALANCE: £" + str(cash_balance))
+        total_balance_label = QLabel("TOTAL BALANCE: £" + str(round(total_balance,2)))
+        cash_balance_label = QLabel("CASH BALANCE: £" + str(round(cash_balance,2)))
 
         balance_layout = QVBoxLayout()
         balance_layout.addWidget(total_balance_label)
@@ -306,6 +306,9 @@ class TradeWidget(QWidget):
     def __init__(self, stockWindow):
         super().__init__()
         self.stockWindow = stockWindow
+        self.stock_inputs = {}
+        self.price_outputs = {}
+        self.balance_outputs = {}
 
         #tab buttons (PURCHASE / SELL)
         button_layout = QHBoxLayout()
@@ -328,39 +331,74 @@ class TradeWidget(QWidget):
         self.setLayout(layout)
 
     def create_tab(self, mode):
+        #mode = PURCHASE or SELL
         widget = QWidget()
-        layout = QVBoxLayout()
 
+        lhs_layout = QVBoxLayout()
+        self.num_of_stock_label = QLabel("NUMBER OF STOCK:")
+        self.price_label = QLabel("PRICE:")
+        self.balance_label = QLabel("BALANCE AFTER:")
+        lhs_layout.addWidget(self.num_of_stock_label)
+        lhs_layout.addWidget(self.price_label)
+        lhs_layout.addWidget(self.balance_label)
+
+        rhs_layout = QVBoxLayout()
         stock_input = QLineEdit()
         stock_input.setPlaceholderText("Enter number of stocks")
         stock_input.setValidator(QIntValidator(1, 1000000))
-        stock_input.textChanged.connect(lambda: self.update_labels(stock_input.text()))
+        stock_input.textChanged.connect(lambda text, m=mode: self.update_labels(text, m))
+        rhs_layout.addWidget(stock_input)
         
-        self.price_label = QLabel("PRICE: £...")
-        self.balance_label = QLabel("BALANCE AFTER: £...")
+        price_output = QLineEdit()
+        price_output.setReadOnly(True)
+        price_output.setPlaceholderText("£0.00")
+        rhs_layout.addWidget(price_output)
 
+        balance_output = QLineEdit()
+        balance_output.setReadOnly(True)
+        balance_output.setPlaceholderText("£0.00")
+        rhs_layout.addWidget(balance_output)
+
+        self.stock_inputs[mode] = stock_input
+        self.price_outputs[mode] = price_output
+        self.balance_outputs[mode] = balance_output
+
+        combined_layout = QHBoxLayout()
+        combined_layout.addLayout(lhs_layout)
+        combined_layout.addLayout(rhs_layout)
+        
+        final_layout = QVBoxLayout()
         confirm_button = QPushButton(f"CONFIRM {mode}")
-
-        layout.addWidget(QLabel("NUMBER OF STOCK"))
-        layout.addWidget(stock_input)
-        layout.addWidget(self.price_label)
-        layout.addWidget(self.balance_label)
-        layout.addWidget(confirm_button)
-        widget.setLayout(layout)
+        final_layout.addLayout(combined_layout)
+        final_layout.addWidget(confirm_button)
+        widget.setLayout(final_layout)
         return widget
     
-    def update_labels(self, input):
-        if input.isdigit():
-            num_stocks = int(input)
-            stock_price = self.stockWindow.Stock.get_current_value()
-            total_price = num_stocks * stock_price
-            cash_balance = self.stockWindow.simulator.balance.getCurrentBalance()
+    def update_labels(self, stock_input: str, mode):
+        if not stock_input.strip().isdigit():
+            self.price_outputs[mode].clear()
+            self.balance_outputs[mode].clear()
+            return
+
+        num_stocks = int(stock_input)
+        stock_price = self.stockWindow.Stock.get_current_value()
+        total_price = num_stocks * stock_price
+        cash_balance = self.stockWindow.simulator.balance.getCurrentBalance()
+
+        if mode == "PURCHASE":
             new_balance = cash_balance - total_price
-            self.price_label.setText(f"PRICE: £{total_price:,.2f}")
-            self.balance_label.setText(f"BALANCE AFTER: £{new_balance:,.2f}")
-        else:
-            self.price_label.setText("PRICE: £0.00")
-            self.balance_label.setText("BALANCE AFTER: £0.00")
+        if mode == "SELL":
+            new_balance = cash_balance + total_price
+        
+        self.price_outputs[mode].setText(f"£{total_price:,.2f}")
+        self.balance_outputs[mode].setText(f"£{new_balance:,.2f}")
+        
+        # self.price_output.update()
+        # self.balance_output.update()
+
+        # print("price_output visible:", self.price_output.isVisible())
+        # print("price_output enabled:", self.price_output.isEnabled())
+        
 
 
 class displayStrategies(QWidget):
