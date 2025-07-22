@@ -207,7 +207,8 @@ class TradingSimulator:
                 ticker TEXT,
                 cash_invested REAL,
                 investment_value REAL,
-                current_performance REAL,
+                investment_performance REAL,
+                current_stock_performance REAL,
                 number_of_stocks INTEGER
             )
         """)
@@ -236,8 +237,8 @@ class TradingSimulator:
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
             (date, current_balance, total_invested_balance, ticker, cash_invested,
-                investment_value, current_performance, number_of_stocks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                investment_value, investment_performance, current_stock_performance, number_of_stocks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
@@ -245,6 +246,7 @@ class TradingSimulator:
                 stock.get_ticker(),
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
+                stock.get_investment_performance(),
                 stock.get_current_performance(),
                 stock.get_number_stocks()
             ))

@@ -66,7 +66,7 @@ class Stock:
     def set_current_value(self, value: float):
         if value >= 0:
             self.current_stock_value = value
-            self.update_current_performance()  # Recalculate performance when value changes
+            self.update_current_stock_performance()  # Recalculate performance when value changes
         else:
             raise ValueError("Stock value cannot be negative.")
         
@@ -85,7 +85,7 @@ class Stock:
         self.current_stock_performance = self.opening_stock_performance
         self.number_stocks = 0
 
-    def update_current_performance(self):
+    def update_current_stock_performance(self):
         '''calculate current performance based on opening value and current value'''
         opening = self.get_opening_stock_value()
         current = self.get_current_stock_value()
@@ -109,7 +109,7 @@ class Stock:
     def dailyStockUpdate(self, date) -> None:
         #update the current value and performance of the stock based on the date
         self.set_current_value(Stock.fetchClosingValue(self.ticker, date))
-        self.update_current_performance
+        self.update_current_stock_performance
 
         # update the investment value and performance
         self.update_investment_value
@@ -193,9 +193,13 @@ class Stock:
     @staticmethod
     def fetchOpeningPerformance(ticker: str, date) -> float:
         """calculate the opening performance of the stock 
-        based on historical data within the simulation time range."""
+        based on historical data within the the last year."""
         
-        startDate = Stock.get_start_and_end_dates('historicalData')[0]
+        #find start date from a year ago based on current date
+        startDate = datetime.strptime(date, "%Y-%m-%d").replace(year=datetime.now().year - 1).strftime("%Y-%m-%d")
+        #if the start date is not available, use the earliest date in the database
+        if not Stock.fetchDates(startDate, date, ticker):
+            startDate = Stock.get_start_and_end_dates('historicalData')[0]
         
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()

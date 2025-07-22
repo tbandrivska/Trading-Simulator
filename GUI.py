@@ -9,6 +9,7 @@ from PySide6.QtGui import QIntValidator
 import sqlite3
 from Stock import Stock
 from TradingSimulator import TradingSimulator
+from TradingStrategiesWidget import TradingStrategiesWidget
 
 
 class startWindow(QWidget):
@@ -242,18 +243,18 @@ class displayStock(QWidget):
         stock_details_grid.addWidget(investment_value_label,1,1)
         #investment performance
         performance_title_label = QLabel("INVESTMENT PERFORMANCE")
-        investment_performance = round(self.Stock.calc_investment_performance(),1)
+        investment_performance = round(self.Stock.get_investment_performance(),1)
         performance_label = QLabel(str(investment_performance) + "%")
         stock_details_grid.addWidget(performance_title_label,0,2)
         stock_details_grid.addWidget(performance_label,1,2)
         #Stock performance 
         stock_performance_title_label = QLabel("STOCK PERFORMANCE")
-        stock_performance_label = QLabel(str(round(self.Stock.get_current_performance(),1)) + "%")
+        stock_performance_label = QLabel(str(round(self.Stock.get_current_stock_performance(),1)) + "%")
         stock_details_grid.addWidget(stock_performance_title_label,0,3)
         stock_details_grid.addWidget(stock_performance_label,1,3)
         #Stock value
         stock_value_title_label = QLabel("STOCK VALUE")
-        stock_value_label = QLabel("£" + str(round(self.Stock.get_current_value(),2)))
+        stock_value_label = QLabel("£" + str(round(self.Stock.get_current_stock_value(),2)))
         stock_details_grid.addWidget(stock_value_title_label,0,4)
         stock_details_grid.addWidget(stock_value_label,1,4)
 
@@ -293,7 +294,6 @@ class displayStock(QWidget):
 
 
     def displayStrategiesFunc(self):
-        from TradingStrategiesWidget import TradingStrategiesWidget
         self.strat_widget = TradingStrategiesWidget(self.simulator, self)
         self.strat_widget.show()
         
