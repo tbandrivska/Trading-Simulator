@@ -456,13 +456,12 @@ class TradingSimulator:
         conn.close()
 
         dates = [row[0] for row in rows]
-        for date in dates: #each loop = daily cycle
-            #update stock values and apply strategies to each stock
+        for date in dates:  # each loop = daily cycle
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
-                #insert - execute strategies
+                 # apply all active strategies to this stock
+                self.strategies.apply(stock, dates.index(date))
                 self.record_transaction(stock, date)
-
         if not self.validDates:
             self.start_date = self.loop_restart_date()                           
 

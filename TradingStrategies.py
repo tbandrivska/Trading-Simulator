@@ -45,10 +45,14 @@ class TradingStrategies:
                 self.strategies[strategy_name][param] = value
 
     def apply(self, stock: Stock, day_index: int = None) -> None:
-        """Apply all active strategies to a stock"""
-        for strategy in self.strategies.values():
-            if strategy['active']:
-                strategy['action'](stock, day_index)
+        for name, config in self.strategies.items():
+            if config.get('active', False):
+                if name == 'take_profit':
+                    self._take_profit(stock, day_index)
+                elif name == 'stop_loss':
+                    self._stop_loss(stock, day_index)
+                elif name == 'dollar_cost_avg':
+                    self._dollar_cost_avg(stock, day_index)
 
  
     # Individual Strategies
