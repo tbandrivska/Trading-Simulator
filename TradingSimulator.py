@@ -14,17 +14,7 @@ from TradingStrategies import TradingStrategies
 class TradingSimulator:
     
     #methods that are up for discussion
-    def _get_previous_trading_day(self, date: str) -> str:
-        """Find the most recent trading day before given date"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT MAX(date) FROM historicalData 
-            WHERE date < ?
-        """, (date))
-        result = cursor.fetchone()[0]
-        conn.close()
-        return result if result else date  # Fallback to same date if no previous found
+
 
     def get_user_strategy_choice(self):
             """
@@ -104,6 +94,17 @@ class TradingSimulator:
         
         return max_days
 
+    def get_previous_trading_day(self, date) -> str:
+        """Find the most recent trading day before given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MAX(date) FROM historicalData 
+            WHERE date < ?
+        """, (date))
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result if result else date  # Fallback to same date if no previous found
 
     # 1 initialisation
     def __init__(self, start_balance: float = 10000):
@@ -204,6 +205,7 @@ class TradingSimulator:
                 date TEXT,
                 current_balance REAL,
                 total_invested_balance REAL,
+                balance_performance REAL,
                 ticker TEXT,
                 cash_invested REAL,
                 investment_value REAL,
@@ -230,13 +232,14 @@ class TradingSimulator:
         cursor = conn.cursor()
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
-            (date, current_balance, total_invested_balance, ticker, cash_invested,
+            (date, current_balance, total_invested_balance, balance_performance, ticker, cash_invested,
                 investment_value, investment_performance, current_stock_performance, number_of_stocks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
+                self.balance.getBalancePerformance(),
                 stock.get_ticker(),
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
@@ -407,6 +410,7 @@ class TradingSimulator:
             purchase:bool = self.balance.purchase(stock, amount)
             if purchase:
                 print(f"Purchased {amount} shares of {ticker}")
+                self.record_transaction(stock, self.start_date)
 
             return purchase
            
@@ -415,6 +419,7 @@ class TradingSimulator:
             sell:bool = self.balance.sell(stock, -amount)
             if sell:
                 print(f"Sold {-amount} shares of {ticker}")
+                self.record_transaction(stock, self.start_date)
             return sell
         else:
             return False
@@ -438,11 +443,13 @@ class TradingSimulator:
 
         print("simulation runs are now completed")
 
+        #change the start date to be the day AFTER the last date
+        self.start_date = self.get_next_day(self.end_date)
+        
     def sim_run(self) -> None:
         """Run simulation for the set timeframe"""
         if self.current_timeframe_in_days <= 0:
-            print("insufficient number of days. must be at least 1")
-            return
+            raise ValueError("insufficient number of days in timeframe. must be at least 1")
 
         # Generate all trading dates between start and end date (inclusive)
         conn = sqlite3.connect('data.db')
@@ -532,6 +539,23 @@ class TradingSimulator:
         print("loop restart date: " + earliest_date_str)
         return earliest_date_str
 
+    def get_next_day(self, date) -> str:
+        """Find the day after a given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MIN(date) FROM historicalData 
+            WHERE date > ?
+        """, (date,))
+        next_day = cursor.fetchone()[0]
+        print("next day: " + str(next_day))
+        conn.close()
+
+        if next_day is None: 
+            next_day = self.loop_restart_date()
+
+        return next_day 
+ 
 
     #  5 simulation termination
     def end_simulation(self, new_simulation: bool, days: int) -> None:
@@ -551,8 +575,9 @@ class TradingSimulator:
             #self.plot_performance()
 
     # 6 plot graphs
-    def plot_sim_graph(self):
-        """plot simulation graph - show progression of total invested balance"""
+    def get_sim_graph_data(self) -> dict:
+        """plot simulation graph - show progression of total invested balance
+        return tuple - (list of days, list of total_invested_balances on each day)"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
@@ -572,6 +597,13 @@ class TradingSimulator:
                 balances.append(float(balance))
 
         days_list = list(range(1, days + 1))
+
+        data = {
+        "days": days_list,
+        "balances": balances
+        }
+        return data
+        
   
         plt.figure(figsize=(10, 5))
         plt.plot(days_list, balances, marker='x')
@@ -582,8 +614,9 @@ class TradingSimulator:
         plt.tight_layout()
         plt.show()
                     
-    def plot_stock_graph(self, Stock):
-        """plot stock graph - show progression of invested balance of a particular stock"""
+    def get_stock_graph_data(self, Stock) -> dict:
+        """get stock graph data - show progression of invested balance of a particular stock
+        return tuple - (list of days, list of invested_balances on each day)"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
@@ -603,6 +636,12 @@ class TradingSimulator:
             balances.append(float(balance))
 
         days_list = list(range(1, days + 1))
+
+        data = {
+        "days": days_list,
+        "balances": balances
+        }
+        return data
   
         plt.figure(figsize=(10, 5))
         plt.plot(days_list, balances, marker='x')
@@ -639,7 +678,7 @@ class TradingSimulator:
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
-        # #3 simulation setup (purchase stocks and set strategies)
+        #3 simulation setup (purchase stocks and set strategies)
         # self.trade_each_stock()
         # print("phase 3 complete: Stocks traded and strategies set.")
 
@@ -651,12 +690,6 @@ class TradingSimulator:
         # self.end_simulation(new_simulation=False, days = 0)
         # print("phase 5 complete: Simulation ended and performance plotted.")
 
-        #6 plot graphs
-        self.load_prev_simulation('sim_20250723_29363')
-        self.plot_sim_graph()
-        Stock = self.stocks['AAPL']  # Example ticker
-        print("Plotting stock graph for: " + Stock.get_name())
-        self.plot_stock_graph(Stock)
         
 
 

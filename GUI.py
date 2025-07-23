@@ -7,9 +7,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIntValidator
 import sqlite3
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 from Stock import Stock
 from TradingSimulator import TradingSimulator
 from TradingStrategiesWidget import TradingStrategiesWidget
+
 
 
 class startWindow(QWidget):
@@ -132,9 +135,10 @@ class displaySimulation(QWidget):
         portfolio_layout.addWidget(portfolio_performance_label)
 
         #placeholder for graph
-        graph_placeholder = QLabel()
-        graph_placeholder.setFixedSize(800, 400)
-        graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
+        graph_widget = graphWidget("SIMULATION", self.simulator)
+        graph_widget.plot_graph()
+        #graph_placeholder.setFixedSize(800, 400)
+        #graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
 
         #time input
         self.days_input = QLineEdit()
@@ -147,7 +151,7 @@ class displaySimulation(QWidget):
         #display balance, performance, graph and time input on the RHS
         right_panel = QVBoxLayout()
         right_panel.addLayout(portfolio_layout)
-        right_panel.addWidget(graph_placeholder)
+        right_panel.addWidget(graph_widget)
         right_panel.addLayout(time_layout)
 
         #run/end simulation
@@ -213,7 +217,6 @@ class displaySimulation(QWidget):
         self.total_balance_label.setText("TOTAL BALANCE: £" + str(round(total_balance,2)))
         self.cash_balance_label.setText("CASH BALANCE: £" + str(round(cash_balance,2)))
    
-
 
 class displayStock(QWidget):
     def __init__(self, simWindow, simulator, Stock):
@@ -281,7 +284,7 @@ class displayStock(QWidget):
         right_panel.addLayout(status_bar)
 
         #trade bar - num of stock, price of stock, balance after purchase, trade confirmation
-        trade_widget = TradeWidget(self)
+        trade_widget = tradeWidget(self)
         right_panel.addWidget(trade_widget)
 
         #implement trading strategies - trigger displayStrategies
@@ -312,7 +315,7 @@ class displayStock(QWidget):
         self.simWindow.show()
 
 
-class TradeWidget(QWidget):
+class tradeWidget(QWidget):
     def __init__(self, stockWindow):
         super().__init__()
         self.stockWindow = stockWindow
@@ -504,6 +507,47 @@ class displaySims(QWidget):
     def displayPrevSimFunc(self, sim_id):
         self.startWindow.displaySimDetailsFunc(sim_id)
         self.close()
+
+
+class graphWidget(QWidget):
+    def __init__(self, type: str, simulator):
+        super().__init__()
+        self.type = type
+        self.simulator = simulator
+
+        self.figure = Figure(figsize=(5, 5), dpi=100)
+        self.canvas = FigureCanvas(self.figure)
+        self.ax = self.figure.add_subplot(111)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+
+    def plot_graph(self):
+        """Plot graph data on specified graph."""
+        if self.type == "SIMULATION":
+            balance_type = "TOTAL"
+            data = self.simulator.get_sim_graph_data()
+        elif self.type == "STOCK":
+            balance_type = ""
+            data = self.simulator.get_stock_graph_data()
+        else: 
+            raise ValueError(f"type: {self.type} is invalid when initialising graphWidget. 'SIMULATION' or 'STOCK' only")
+
+        day_data = data["days"]
+        balance_data = data["balances"]
+
+        self.ax.clear()  # Clear previous plots
+        self.ax.plot(day_data, balance_data, marker='x')
+        self.ax.set_title(self.type + " PERFORMANCE")
+        self.ax.set_xlabel("Day")
+        self.ax.set_ylabel(balance_type + " INVESTED BALANCE")
+        self.ax.grid(True)
+        self.canvas.draw()
+        
+
+            
+
 
 
 # Test function

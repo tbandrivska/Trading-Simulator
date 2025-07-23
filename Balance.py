@@ -6,6 +6,7 @@ class Balance:
         self.startBalance = startBalance
         self.currentBalance = startBalance
         self.totalInvestedBalance = 0
+        self.balancePerformance = 0.0
 
     #getter and setter methods for the instance variables
     def setStartBalance(self, startBalance:float):
@@ -31,6 +32,10 @@ class Balance:
     def getTotalInvestedBalance(self):
         return self.totalInvestedBalance    
 
+    def setBalancePerformance(self, balancePerformance: float):
+        self.balancePerformance = balancePerformance
+    def getBalancePerformance(self):
+        return self.balancePerformance
 
     #purchase method buys stocks and removes the amount from the balance
     def purchase(self, Stock, amount:int):
@@ -75,7 +80,7 @@ class Balance:
 
         for label, date in [("start", start_date), ("end", end_date)]:
             cursor.execute(f"""
-                SELECT current_balance, total_invested_balance
+                SELECT current_balance, total_invested_balance, balance_performance
                 FROM {simulation_id}
                 WHERE date = ?
             """, (date,))
@@ -91,7 +96,13 @@ class Balance:
         self.startBalance = results["start"][0]
         self.currentBalance = results["end"][0]
         self.totalInvestedBalance = results["end"][1]
+        self.balancePerformance = results["end"][2]
 
+    def update_performance(self):
+        total_balance = self.currentBalance + self.totalInvestedBalance
+        performance = (total_balance - self.startBalance / self.startBalance) * 100
+        return performance
+   
     #copy and pasted from Stock.py - maybe should be moved to a common utility module    
     @staticmethod
     def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
