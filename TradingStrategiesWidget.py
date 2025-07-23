@@ -68,3 +68,4 @@ class TradingStrategiesWidget(QDialog):
                 self.simulator.strategies.deactivate(name)
         QMessageBox.information(self, "Saved", "Strategies updated!")
         self.accept()
+        self.parent().update_balances()

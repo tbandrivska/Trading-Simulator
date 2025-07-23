@@ -74,15 +74,16 @@ class displaySimulation(QWidget):
         self.setWindowTitle("SIMULATION ID: " + self.simulator.get_sim_id())
 
         #Total Balance and Cash Balance
+        
         cash_balance = self.simulator.balance.getCurrentBalance()
         invested_balance = self.simulator.balance.getTotalInvestedBalance()
         total_balance = cash_balance + invested_balance
-        total_balance_label = QLabel("TOTAL BALANCE: £" + str(round(total_balance,2)))
-        cash_balance_label = QLabel("CASH BALANCE: £" + str(round(cash_balance,2)))
-
+        self.total_balance_label = QLabel("TOTAL BALANCE: £" + str(round(total_balance,2)))
+        self.cash_balance_label = QLabel("CASH BALANCE: £" + str(round(cash_balance,2)))
+        self.invested_label = QLabel("INVESTED BALANCE: £" + str(round(invested_balance,2)))
         balance_layout = QVBoxLayout()
-        balance_layout.addWidget(total_balance_label)
-        balance_layout.addWidget(cash_balance_label)
+        balance_layout.addWidget(self.total_balance_label)
+        balance_layout.addWidget(self.cash_balance_label)
 
         #Stock tabel: name, performannce, value
         stock_grid = QGridLayout()
@@ -187,7 +188,8 @@ class displaySimulation(QWidget):
         if 0 < days < 10000:
             self.simulator.set_timeframe(days)
             self.simulator.run_simulation()
-            self.reloadSimWindow() 
+            self.update_balances()
+            self.reloadSimWindow()
 
     def get_days_input(self) -> int:
         text = self.days_input.text()
@@ -204,6 +206,13 @@ class displaySimulation(QWidget):
         self.new_window = displaySimulation(self.startWindow, self.sim_id)
         self.new_window.show()
         self.close()
+    def update_balances(self):
+        cash_balance = self.simulator.balance.getCurrentBalance()
+        invested_balance = self.simulator.balance.getTotalInvestedBalance()
+        total_balance = cash_balance + invested_balance
+        self.total_balance_label.setText("TOTAL BALANCE: £" + str(round(total_balance,2)))
+        self.cash_balance_label.setText("CASH BALANCE: £" + str(round(cash_balance,2)))
+   
 
 
 class displayStock(QWidget):
@@ -265,9 +274,9 @@ class displayStock(QWidget):
 
         #status bar - cash balance, number of stocks
         status_bar = QVBoxLayout()
-        cash_balance_label = QLabel("CASH BALANCE: £" + str(self.simulator.balance.getCurrentBalance()))
+        self.cash_balance_label = QLabel("CASH BALANCE: £" + str(self.simulator.balance.getCurrentBalance()))
         num_stocks_label = QLabel("NUMBER OF STOCKS OWNED: " + str(self.Stock.get_number_stocks()))
-        status_bar.addWidget(cash_balance_label)
+        status_bar.addWidget(self.cash_balance_label)
         status_bar.addWidget(num_stocks_label)
         right_panel.addLayout(status_bar)
 
@@ -421,6 +430,7 @@ class TradeWidget(QWidget):
             #open micro window: trade succesful
             #open and close stock window to update change
             self.reloadStockWindow()
+            self.stockWindow.simWindow.update_balances()
 
     def reloadStockWindow(self):
         """reload window so that it dispalys changes in data"""
