@@ -205,7 +205,8 @@ class TradingSimulator:
                 date TEXT,
                 current_balance REAL,
                 total_invested_balance REAL,
-                balance_performance REAL,
+                portfolio_value REAL,
+                portfolio_performance REAL,
                 ticker TEXT,
                 cash_invested REAL,
                 investment_value REAL,
@@ -232,14 +233,15 @@ class TradingSimulator:
         cursor = conn.cursor()
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
-            (date, current_balance, total_invested_balance, balance_performance, ticker, cash_invested,
+            (date, current_balance, total_invested_balance, portfolio_value, portfolio_performance, ticker, cash_invested,
                 investment_value, investment_performance, current_stock_performance, number_of_stocks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
-                self.balance.getBalancePerformance(),
+                self.balance.getPortfolioValue(),
+                self.balance.getPortfolioPerformance(),
                 stock.get_ticker(),
                 stock.get_cash_invested(),
                 stock.get_investment_value(),
@@ -468,8 +470,8 @@ class TradingSimulator:
         for date in dates:  # each loop = daily cycle
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
-                 # apply all active strategies to this stock
                 self.strategies.apply(stock, dates.index(date))
+                self.balance.daily_balance_update(self.current_simulation_id) #type: ignore 
                 self.record_transaction(stock, date)
         if not self.validDates:
             self.start_date = self.loop_restart_date()                           
@@ -550,7 +552,6 @@ class TradingSimulator:
             WHERE date > ?
         """, (date,))
         next_day = cursor.fetchone()[0]
-        print("next day: " + str(next_day))
         conn.close()
 
         if next_day is None: 
@@ -584,7 +585,7 @@ class TradingSimulator:
         cursor = conn.cursor()
 
         cursor.execute(f"""
-            SELECT entry_number, total_invested_balance
+            SELECT entry_number, portfolio_value
             FROM {self.current_simulation_id}
         """)
         results = cursor.fetchall()
@@ -673,18 +674,18 @@ class TradingSimulator:
         # self.set_timeframe(365)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
-        # # 2.5 configuration - load previous simulation
-        # self.load_prev_simulation('sim_20250721_5146')
-        # # self.set_timeframe(30)
-        # # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        # 2.5 configuration - load previous simulation
+        # self.load_prev_simulation('sim_20250724_48851')
+        # self.set_timeframe(30)
+        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
-        #3 simulation setup (purchase stocks and set strategies)
+        # 3 simulation setup (purchase stocks and set strategies)
         self.trade_each_stock()
         print("phase 3 complete: Stocks traded and strategies set.")
 
-        # # 4 simulation Execution
+        # 4 simulation Execution
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
 

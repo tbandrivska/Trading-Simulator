@@ -131,8 +131,8 @@ class displaySimulation(QWidget):
 
         #Invested balance, portforlio performance
         self.invested_label = QLabel("INVESTED BALANCE: £" + str(round(invested_balance,2)))
-        balance_performance = self.simulator.balance.getBalancePerformance()
-        self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(balance_performance,1)) +"x%")
+        portfolio_performance = self.simulator.balance.getPortfolioPerformance()
+        self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(portfolio_performance,1)) +"x%")
         portfolio_layout = QVBoxLayout()
         portfolio_layout.addWidget(self.invested_label)
         portfolio_layout.addWidget(self.portfolio_performance_label)
@@ -420,10 +420,10 @@ class tradeWidget(QWidget):
         ticker = self.Stock.get_ticker()
         confirmed = self.simulator.trade_a_stock(ticker, amount)
         if not confirmed:
-            print("trade unsuccesful")
+            print("Trade unsuccesful: insufficient balance to purchase stocks.")
             #open micro window: trade unsuccesful
         else:
-            print("trade succesful")
+            print("Trade succesful")
             #open micro window: trade succesful
             #open and close stock window to update change
             self.reloadStockWindow()
@@ -519,10 +519,10 @@ class graphWidget(QWidget):
     def plot_graph(self):
         """Plot graph data on specified graph."""
         if self.type == "SIMULATION":
-            balance_type = "TOTAL"
+            balance_type = "VALUE OF PORTFOLIO"
             data = self.simulator.get_sim_graph_data()
         elif self.type == "STOCK":
-            balance_type = ""
+            balance_type = "VALUE OF STOCK"
             data = self.simulator.get_stock_graph_data()
         else: 
             raise ValueError(f"type: {self.type} is invalid when initialising graphWidget. 'SIMULATION' or 'STOCK' only")
@@ -534,7 +534,7 @@ class graphWidget(QWidget):
         self.ax.plot(day_data, balance_data, marker='x')
         self.ax.set_title(self.type + " PERFORMANCE")
         self.ax.set_xlabel("Day")
-        self.ax.set_ylabel(balance_type + " INVESTED BALANCE")
+        self.ax.set_ylabel(balance_type)
         self.ax.grid(True)
         self.canvas.draw()
         
