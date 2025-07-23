@@ -124,7 +124,7 @@ class Stock:
         with sqlite3.connect("data.db") as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
-                SELECT cash_invested, investment_value, investment_performance, current_performance, number_of_stocks
+                SELECT cash_invested, investment_value, investment_performance, current_stock_performance, number_of_stocks
                 FROM {simulation_id}
                 WHERE date = ? AND ticker = ?
             """, (end_date, self.ticker))

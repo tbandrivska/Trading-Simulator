@@ -549,26 +549,88 @@ class TradingSimulator:
         else:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
             #self.plot_performance()
-        
 
-      
+    # 6 plot graphs
+    def plot_sim_graph(self):
+        """plot simulation graph - show progression of total invested balance"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT entry_number, total_invested_balance
+            FROM {self.current_simulation_id}
+        """)
+        results = cursor.fetchall()
+        conn.close()
+
+        number_of_stocks = len(self.database.getTickers())
+        days = 0
+        balances = []
+        for entry, balance in results:
+            if int(entry) % number_of_stocks == 0:
+                days += 1
+                balances.append(float(balance))
+
+        days_list = list(range(1, days + 1))
+  
+        plt.figure(figsize=(10, 5))
+        plt.plot(days_list, balances, marker='x')
+        plt.xlabel('Day')
+        plt.ylabel('Total Invested Balance')
+        plt.title('Portfolio Performance')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+                    
+    def plot_stock_graph(self, Stock):
+        """plot stock graph - show progression of invested balance of a particular stock"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+
+        ticker = Stock.get_ticker()
+        cursor.execute(f"""
+            SELECT investment_value
+            FROM {self.current_simulation_id}
+            WHERE ticker = ?
+        """, (ticker,))
+        results = cursor.fetchall()
+        conn.close()
+
+        days = 0
+        balances = []
+        for (balance,) in results:
+            days += 1
+            balances.append(float(balance))
+
+        days_list = list(range(1, days + 1))
+  
+        plt.figure(figsize=(10, 5))
+        plt.plot(days_list, balances, marker='x')
+        plt.xlabel('Day')
+        plt.ylabel('Invested Balance')
+        plt.title('Stock Performance')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+
 
     #test methods to run the simulation
     def testRun(self):
         """Run a test simulation with random parameters"""
-        # 1 initialisation of startdate and stocks
-        self.randomiseStartDate()
-        self.create_stocks()
-        print("phase 1 complete: Stocks created and start date set.")
-        print("starting balance = " + str(self.balance.getStartBalance()))
-        print("current balance = " + str(self.balance.getCurrentBalance()))
+        # # 1 initialisation of startdate and stocks
+        # self.randomiseStartDate()
+        # self.create_stocks()
+        # print("phase 1 complete: Stocks created and start date set.")
+        # print("starting balance = " + str(self.balance.getStartBalance()))
+        # print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # 2 cofiguration - new simulation
-        self.new_simulation()
-        # self.set_timeframe(30)
-        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        self.set_timeframe(365)
-        print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
+        # # 2 cofiguration - new simulation
+        # self.new_simulation()
+        # # self.set_timeframe(30)
+        # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        # self.set_timeframe(365)
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
         # # 2.5 configuration - load previous simulation
         # self.load_prev_simulation('sim_20250721_5146')
@@ -577,17 +639,24 @@ class TradingSimulator:
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
-        #3 simulation setup (purchase stocks and set strategies)
-        self.trade_each_stock()
-        print("phase 3 complete: Stocks traded and strategies set.")
+        # #3 simulation setup (purchase stocks and set strategies)
+        # self.trade_each_stock()
+        # print("phase 3 complete: Stocks traded and strategies set.")
 
-        # 4 simulation Execution
-        self.run_simulation()
-        print("phase 4 complete: Simulation executed.")
+        # # 4 simulation Execution
+        # self.run_simulation()
+        # print("phase 4 complete: Simulation executed.")
 
-        # 5 simulation termination
-        self.end_simulation(new_simulation=False, days = 0)
-        print("phase 5 complete: Simulation ended and performance plotted.")
+        # # 5 simulation termination
+        # self.end_simulation(new_simulation=False, days = 0)
+        # print("phase 5 complete: Simulation ended and performance plotted.")
+
+        #6 plot graphs
+        self.load_prev_simulation('sim_20250723_29363')
+        self.plot_sim_graph()
+        Stock = self.stocks['AAPL']  # Example ticker
+        print("Plotting stock graph for: " + Stock.get_name())
+        self.plot_stock_graph(Stock)
         
 
 
