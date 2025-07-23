@@ -338,7 +338,7 @@ class TradingSimulator:
         if self.validDates:
             print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         else:
-            print("timeframe exceeds available dates, time loop initiated")
+            print(f"timeframe exceeds available dates as end date is {self.end_date} - time loop initiated")
         
     def _validate_dates(self, start_date, end_date) -> int:
         """Check if dates exist in database"""
@@ -445,6 +445,8 @@ class TradingSimulator:
 
         #change the start date to be the day AFTER the last date
         self.start_date = self.get_next_day(self.end_date)
+        print(f"simulation ended on: {self.end_date}")
+        print(f"new start date: {self.start_date}")
         
     def sim_run(self) -> None:
         """Run simulation for the set timeframe"""
@@ -657,17 +659,17 @@ class TradingSimulator:
     #test methods to run the simulation
     def testRun(self):
         """Run a test simulation with random parameters"""
-        # # 1 initialisation of startdate and stocks
-        # self.randomiseStartDate()
-        # self.create_stocks()
-        # print("phase 1 complete: Stocks created and start date set.")
-        # print("starting balance = " + str(self.balance.getStartBalance()))
-        # print("current balance = " + str(self.balance.getCurrentBalance()))
+        # 1 initialisation of startdate and stocks
+        self.randomiseStartDate()
+        self.create_stocks()
+        print("phase 1 complete: Stocks created and start date set.")
+        print("starting balance = " + str(self.balance.getStartBalance()))
+        print("current balance = " + str(self.balance.getCurrentBalance()))
        
-        # # 2 cofiguration - new simulation
-        # self.new_simulation()
-        # # self.set_timeframe(30)
-        # # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        # 2 cofiguration - new simulation
+        self.new_simulation()
+        self.set_timeframe(30)
+        print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # self.set_timeframe(365)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
@@ -679,12 +681,12 @@ class TradingSimulator:
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
         #3 simulation setup (purchase stocks and set strategies)
-        # self.trade_each_stock()
-        # print("phase 3 complete: Stocks traded and strategies set.")
+        self.trade_each_stock()
+        print("phase 3 complete: Stocks traded and strategies set.")
 
         # # 4 simulation Execution
-        # self.run_simulation()
-        # print("phase 4 complete: Simulation executed.")
+        self.run_simulation()
+        print("phase 4 complete: Simulation executed.")
 
         # # 5 simulation termination
         # self.end_simulation(new_simulation=False, days = 0)
