@@ -577,6 +577,7 @@ class TradingSimulator:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
             #self.plot_performance()
 
+
     # 6 plot graphs
     def get_sim_graph_data(self) -> dict:
         """plot simulation graph - show progression of total invested balance
@@ -656,7 +657,6 @@ class TradingSimulator:
         plt.show()
 
 
-
     #test methods to run the simulation
     def testRun(self):
         """Run a test simulation with random parameters"""
@@ -668,22 +668,22 @@ class TradingSimulator:
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
         # 2 cofiguration - new simulation
-        self.new_simulation()
-        self.set_timeframe(30)
-        print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        # self.new_simulation()
+        # self.set_timeframe(30)
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # self.set_timeframe(365)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
         # 2.5 configuration - load previous simulation
-        # self.load_prev_simulation('sim_20250724_48851')
-        # self.set_timeframe(30)
+        self.load_prev_simulation('sim_20250724_4921')
+        self.set_timeframe(30)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
         # 3 simulation setup (purchase stocks and set strategies)
-        self.trade_each_stock()
-        print("phase 3 complete: Stocks traded and strategies set.")
+        # self.trade_each_stock()
+        # print("phase 3 complete: Stocks traded and strategies set.")
 
         # 4 simulation Execution
         self.run_simulation()
