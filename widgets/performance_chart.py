@@ -17,7 +17,7 @@ class PerformanceChart(QWidget):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
 
-        # Example: Suppose simulator has a list of (date, value) tuples
+        
         history = getattr(simulator, "performance_history", [])
         if history:
             dates, values = zip(*history)

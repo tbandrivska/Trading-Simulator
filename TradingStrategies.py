@@ -59,7 +59,8 @@ class TradingStrategies:
 
     def _take_profit(self, stock: Stock, _) -> None:
         """Sell if stock gains threshold%"""
-        if stock.get_current_stock_value() >= (1 + self.strategies['take_profit']['threshold']) * stock.get_opening_stock_value():
+        if stock.get_number_stocks() > 0 and \
+            stock.get_current_stock_value() >= (1 + self.strategies['take_profit']['threshold']) * stock.get_opening_stock_value():
             self.balance.sell(stock, stock.get_number_stocks())
 
     def _stop_loss(self, stock: Stock, _) -> None:

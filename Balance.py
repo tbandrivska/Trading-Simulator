@@ -57,6 +57,10 @@ class Balance:
         else:
             print("Insufficient stocks to sell.")
             return False
+        new_invested = Stock.get_cash_invested() - price
+        if new_invested < 0:
+            new_invested = 0 
+            Stock.set_cash_invested(new_invested)
 
     #reset method resets the instance variables to their initial values
     def resetBalance(self, start_balance:float):
