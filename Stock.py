@@ -12,6 +12,7 @@ class Stock:
         #updated post-trade
         self.number_stocks = 0
         self.cash_invested = 0.0
+        self.cash_withdrawn = 0.0
         
         #updated daily
         self.current_stock_value = opening_value
@@ -46,6 +47,8 @@ class Stock:
         return self.number_stocks
     def get_cash_invested(self) -> float:
         return self.cash_invested
+    def get_cash_withdrawn(self) -> float:
+        return self.cash_withdrawn
     def get_current_stock_value(self) -> float:                         
         return self.current_stock_value
     def get_current_stock_performance(self) -> float:
@@ -56,12 +59,20 @@ class Stock:
         return self.investment_performance
 
 
-    # I have added setters with input valisation for it to make sense
+    # setters
     def set_cash_invested(self, value: float):
+        """cash invested is a reflection of how much money was invested into a stock
+        but it cannot reflect cash withdrawn from stock"""
         if value >= 0:
             self.cash_invested = value
         else:
-            raise ValueError("Invested balance cannot be negative.")
+            raise ValueError("cash invested cannot be negative.")
+        
+    def set_cash_withdrawn(self, value: float):
+        if value >= 0:
+            self.cash_withdrawn = value
+        else:
+            raise ValueError("cash withdrawn cannot be negative.")
         
     def set_current_value(self, value: float):
         if value >= 0:
@@ -97,13 +108,18 @@ class Stock:
 
     def update_investment_value(self):
         """calculate the current value of the investment using stock performance"""
-        self.investment_value = self.cash_invested * self.current_stock_value
+        self.investment_value = self.number_stocks * self.current_stock_value
 
     def update_investment_performance(self):
-        """Calculate the performance of the investment using cash invested and investment value."""
+        """Calculate the performance of the investment using cash invested/withdrawn and investment value."""
+        cash_profit = self.cash_withdrawn - self.cash_invested
+        overall_profit = self.investment_value + cash_profit
+
         if self.cash_invested == 0:
             performance = 0.0
-        performance = ((self.investment_value - self.cash_invested)/ self.cash_invested) * 100
+        else:
+            performance = (overall_profit / self.cash_invested) * 100
+
         self.investment_performance = performance  
 
     def dailyStockUpdate(self, date) -> None:
@@ -124,7 +140,7 @@ class Stock:
         with sqlite3.connect("data.db") as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
-                SELECT cash_invested, investment_value, investment_performance, current_stock_performance, number_of_stocks
+                SELECT cash_invested, cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks
                 FROM {simulation_id}
                 WHERE date = ? AND ticker = ?
             """, (end_date, self.ticker))
@@ -135,10 +151,11 @@ class Stock:
 
         # Set instance variables
         self.cash_invested = data[0]
-        self.investment_value = data[1]
-        self.investment_performance = data[2]
-        self.current_stock_performance = data[3]
-        self.number_stocks = data[4]
+        self.cash_withdrawn = data[1]
+        self.investment_value = data[2]
+        self.investment_performance = data[3]
+        self.current_stock_performance = data[4]
+        self.number_stocks = data[5]
 
         # Set value-based fields
         self.opening_stock_value = self.fetchOpeningValue(self.ticker, start_date)

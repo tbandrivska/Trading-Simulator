@@ -209,6 +209,7 @@ class TradingSimulator:
                 portfolio_performance REAL,
                 ticker TEXT,
                 cash_invested REAL,
+                cash_withdrawn REAL,
                 investment_value REAL,
                 investment_performance REAL,
                 current_stock_performance REAL,
@@ -234,8 +235,8 @@ class TradingSimulator:
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
             (date, current_balance, total_invested_balance, portfolio_value, portfolio_performance, ticker, cash_invested,
-                investment_value, investment_performance, current_stock_performance, number_of_stocks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
@@ -244,6 +245,7 @@ class TradingSimulator:
                 self.balance.getPortfolioPerformance(),
                 stock.get_ticker(),
                 stock.get_cash_invested(),
+                stock.get_cash_withdrawn(),
                 stock.get_investment_value(),
                 stock.get_investment_performance(),
                 stock.get_current_stock_performance(),
@@ -309,6 +311,7 @@ class TradingSimulator:
         for Stock in self.stocks.values():
             Stock.set_stock_from_simulation(sim_id)
     
+        print(f"previous simultion: {sim_id} has been loaded in")
 
     # 2.3 configuration - timeframe
     def set_timeframe(self, days: int) -> None:
@@ -676,7 +679,7 @@ class TradingSimulator:
 
         # 2.5 configuration - load previous simulation
         self.load_prev_simulation('sim_20250724_4921')
-        self.set_timeframe(30)
+        self.set_timeframe(1)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
@@ -688,6 +691,8 @@ class TradingSimulator:
         # 4 simulation Execution
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
+        self.load_prev_simulation('sim_20250724_4921')
+        self.set_timeframe(1)
 
         # # 5 simulation termination
         # self.end_simulation(new_simulation=False, days = 0)

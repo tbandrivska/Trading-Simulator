@@ -305,7 +305,7 @@ class displayStock(QWidget):
     def endTrade(self):
         start_window = self.simWindow.startWindow
         sim_id = self.simulator.get_sim_id()
-        newSimWindow = displaySimulation(start_window,sim_id)
+        newSimWindow = displaySimulation(start_window, sim_id)
         newSimWindow.show()
         self.close()
         
