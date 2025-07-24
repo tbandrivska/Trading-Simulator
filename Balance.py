@@ -3,9 +3,14 @@ import sqlite3
 class Balance:
     #initialising the instance variables
     def __init__(self, startBalance:float):
+        #static instance variables
         self.startBalance = startBalance
+        #updated post-trade
         self.currentBalance = startBalance
-        self.totalInvestedBalance = 0
+        self.totalInvestedBalance = 0.0 #cash spent on stocks
+        #updated daily
+        self.portfolioValue = 0.0 #combined value of all stocks
+        self.portfolioPerformance = 0.0
 
     #getter and setter methods for the instance variables
     def setStartBalance(self, startBalance:float):
@@ -31,6 +36,15 @@ class Balance:
     def getTotalInvestedBalance(self):
         return self.totalInvestedBalance    
 
+    def setPortfolioValue(self, portfolioValue:float):
+        self.portfolioValue = portfolioValue
+    def getPortfolioValue(self):
+        return self.portfolioValue
+
+    def setPortfolioPerformance(self, balancePerformance: float):
+        self.portfolioPerformance = balancePerformance
+    def getPortfolioPerformance(self):
+        return self.portfolioPerformance
 
     #purchase method buys stocks and removes the amount from the balance
     def purchase(self, Stock, amount:int):
@@ -51,7 +65,7 @@ class Balance:
             price = Stock.get_current_stock_value() * amount
             self.currentBalance += price
             self.totalInvestedBalance -= price
-            Stock.set_cash_invested(Stock.get_cash_invested() - price)
+            Stock.set_cash_withdrawn(Stock.get_cash_withdrawn() + price)
             Stock.set_number_stocks(Stock.get_number_stocks() - amount)
             return True
         else:
@@ -66,50 +80,69 @@ class Balance:
     def resetBalance(self, start_balance:float):
         self.startBalance = start_balance
         self.currentBalance = start_balance
-        self.totalInvestedBalance = 0
+        self.portfolioValue = 0.0
+        self.totalInvestedBalance = 0.0
+        self.portfolioPerformance = 0.0
 
     def set_balance_from_sim(self, simulation_id: str) -> None:
         """Set the balance instance variables based on the first and last date in the simulation data."""
-        start_date, end_date = Balance.get_start_and_end_dates(simulation_id)
-
-        results = {}
-
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
-        for label, date in [("start", start_date), ("end", end_date)]:
-            cursor.execute(f"""
+        cursor.execute(f"""
+                SELECT current_balance
+                FROM {simulation_id}
+                WHERE entry_number = (SELECT MAX(entry_number) FROM {simulation_id})
+            """)
+        result = cursor.fetchone()
+        if result is None:
+            raise ValueError(f"No starting balance found for simulation {simulation_id}")
+        self.startBalance = result[0]
+
+        cursor.execute(f"""
                 SELECT current_balance, total_invested_balance
                 FROM {simulation_id}
-                WHERE date = ?
-            """, (date,))
-            
-            data = cursor.fetchone()
-            if not data:
-                raise ValueError(f"No simulation data found for ID {simulation_id} on {date}")
-            
-            results[label] = data
+                WHERE entry_number = (SELECT MAX(entry_number) FROM {simulation_id})
+            """)
+        result = cursor.fetchone()
+        if result is None:
+            raise ValueError(f"No ending balance found for simulation {simulation_id}")
+        self.currentBalance, self.totalInvestedBalance = result
 
         conn.close()
 
-        self.startBalance = results["start"][0]
-        self.currentBalance = results["end"][0]
-        self.totalInvestedBalance = results["end"][1]
+        self.daily_balance_update(simulation_id)
 
-    #copy and pasted from Stock.py - maybe should be moved to a common utility module    
-    @staticmethod
-    def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
-        """Fetch the start and end dates of the simulation ."""
-        conn = sqlite3.connect("data.db")
+    def daily_balance_update(self, simulation_id: str):
+        """update instance variables which change daily based on stock performance"""
+        self.update_portfolio_value(simulation_id)
+        self.update_portfolio_performance()
+
+    def update_portfolio_value(self, simulation_id):
+        """calculate portfolio value by combining all stock investment value 
+        on the last date in the simulation"""
+        conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-        cursor.execute(f"""         
-            SELECT MIN(date), MAX(date)
-            FROM {simulation_id}
-        """)
-        dates = cursor.fetchone()
-        conn.close()
+        cursor.execute(f"""
+                SELECT investment_value
+                FROM {simulation_id}
+                ORDER BY date DESC
+                LIMIT 10
+            """)
+        data = cursor.fetchall()
+        if not data:
+            raise ValueError(f"No investment values found for end date")
+        portfolio_value = sum(row[0] for row in data)
+        self.portfolioValue = portfolio_value     
+
+    def update_portfolio_performance(self):
+        """calculate how much profit has been generated by invested balance"""
+        profit = self.portfolioValue - self.totalInvestedBalance
+        if self.totalInvestedBalance == 0.0:
+            self.portfolioPerformance = 0.0
+            return
         
-        if not dates or not all(dates):
-            raise ValueError(f"No valid dates found for simulation ID {simulation_id}")
+        performance = (profit/self.totalInvestedBalance)*100
+        self.portfolioPerformance = performance
         
-        return dates[0], dates[1]
+   

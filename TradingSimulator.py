@@ -14,17 +14,7 @@ from TradingStrategies import TradingStrategies
 class TradingSimulator:
     
     #methods that are up for discussion
-    def _get_previous_trading_day(self, date: str) -> str:
-        """Find the most recent trading day before given date"""
-        conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT MAX(date) FROM historicalData 
-            WHERE date < ?
-        """, (date))
-        result = cursor.fetchone()[0]
-        conn.close()
-        return result if result else date  # Fallback to same date if no previous found
+
 
     def get_user_strategy_choice(self):
             """
@@ -104,6 +94,17 @@ class TradingSimulator:
         
         return max_days
 
+    def get_previous_trading_day(self, date) -> str:
+        """Find the most recent trading day before given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MAX(date) FROM historicalData 
+            WHERE date < ?
+        """, (date))
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result if result else date  # Fallback to same date if no previous found
 
     # 1 initialisation
     def __init__(self, start_balance: float = 10000):
@@ -114,6 +115,7 @@ class TradingSimulator:
         #default start and end dates match the database dates
         self.start_date = self.database.getStartDate()
         self.end_date = self.database.getEndDate() 
+        self.randomiseStartDate()
         
         self.start_balance = start_balance
         self.balance = Balance(start_balance)
@@ -199,13 +201,16 @@ class TradingSimulator:
         cursor = conn.cursor()
         
         cursor.execute(f"""
-            CREATE TABLE IF NOT EXISTS {self.current_simulation_id} (
+            CREATE TABLE IF NOT EXISTS "{self.current_simulation_id}" (
                 entry_number INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT,
                 current_balance REAL,
                 total_invested_balance REAL,
+                portfolio_value REAL,
+                portfolio_performance REAL,
                 ticker TEXT,
                 cash_invested REAL,
+                cash_withdrawn REAL,
                 investment_value REAL,
                 investment_performance REAL,
                 current_stock_performance REAL,
@@ -230,15 +235,18 @@ class TradingSimulator:
         cursor = conn.cursor()
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
-            (date, current_balance, total_invested_balance, ticker, cash_invested,
-                investment_value, investment_performance, current_stock_performance, number_of_stocks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, current_balance, total_invested_balance, portfolio_value, portfolio_performance, ticker, cash_invested,
+            cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
+                self.balance.getPortfolioValue(),
+                self.balance.getPortfolioPerformance(),
                 stock.get_ticker(),
                 stock.get_cash_invested(),
+                stock.get_cash_withdrawn(),
                 stock.get_investment_value(),
                 stock.get_investment_performance(),
                 stock.get_current_stock_performance(),
@@ -304,6 +312,7 @@ class TradingSimulator:
         for Stock in self.stocks.values():
             Stock.set_stock_from_simulation(sim_id)
     
+        print(f"previous simultion: {sim_id} has been loaded in")
 
     # 2.3 configuration - timeframe
     def set_timeframe(self, days: int) -> None:
@@ -335,7 +344,7 @@ class TradingSimulator:
         if self.validDates:
             print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         else:
-            print("timeframe exceeds available dates, time loop initiated")
+            print(f"timeframe exceeds available dates as end date is {self.end_date} - time loop initiated")
         
     def _validate_dates(self, start_date, end_date) -> int:
         """Check if dates exist in database"""
@@ -407,6 +416,7 @@ class TradingSimulator:
             purchase:bool = self.balance.purchase(stock, amount)
             if purchase:
                 print(f"Purchased {amount} shares of {ticker}")
+                self.record_transaction(stock, self.start_date)
 
             return purchase
            
@@ -415,6 +425,7 @@ class TradingSimulator:
             sell:bool = self.balance.sell(stock, -amount)
             if sell:
                 print(f"Sold {-amount} shares of {ticker}")
+                self.record_transaction(stock, self.start_date)
             return sell
         else:
             return False
@@ -438,11 +449,15 @@ class TradingSimulator:
 
         print("simulation runs are now completed")
 
+        #change the start date to be the day AFTER the last date
+        self.start_date = self.get_next_day(self.end_date)
+        print(f"simulation ended on: {self.end_date}")
+        print(f"new start date: {self.start_date}")
+        
     def sim_run(self) -> None:
         """Run simulation for the set timeframe"""
         if self.current_timeframe_in_days <= 0:
-            print("insufficient number of days. must be at least 1")
-            return
+            raise ValueError("insufficient number of days in timeframe. must be at least 1")
 
         # Generate all trading dates between start and end date (inclusive)
         conn = sqlite3.connect('data.db')
@@ -459,8 +474,8 @@ class TradingSimulator:
         for date in dates:  # each loop = daily cycle
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
-                 # apply all active strategies to this stock
                 self.strategies.apply(stock, dates.index(date))
+                self.balance.daily_balance_update(self.current_simulation_id) #type: ignore 
                 self.record_transaction(stock, date)
         if not self.validDates:
             self.start_date = self.loop_restart_date()                           
@@ -532,6 +547,22 @@ class TradingSimulator:
         print("loop restart date: " + earliest_date_str)
         return earliest_date_str
 
+    def get_next_day(self, date) -> str:
+        """Find the day after a given date"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT MIN(date) FROM historicalData 
+            WHERE date > ?
+        """, (date,))
+        next_day = cursor.fetchone()[0]
+        conn.close()
+
+        if next_day is None: 
+            next_day = self.loop_restart_date()
+
+        return next_day 
+ 
 
     #  5 simulation termination
     def end_simulation(self, new_simulation: bool, days: int) -> None:
@@ -549,45 +580,123 @@ class TradingSimulator:
         else:
             print("Simulation ended. Final portfolio value:", self.get_total_value())
             #self.plot_performance()
-        
 
-      
+
+    # 6 plot graphs
+    def get_sim_graph_data(self) -> dict:
+        """plot simulation graph - show progression of portfolio value
+        return tuple - (list of days, list of total_invested_balances on each day)"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT entry_number, portfolio_value
+            FROM {self.current_simulation_id}
+        """)
+        results = cursor.fetchall()
+        conn.close()
+
+        number_of_stocks = len(self.database.getTickers())
+        days = 0
+        balances = []
+        for entry, balance in results:
+            if int(entry) % number_of_stocks == 0:
+                days += 1
+                balances.append(float(balance))
+
+        days_list = list(range(1, days + 1))
+
+        data = {
+        "days": days_list,
+        "balances": balances
+        }
+        return data
+        
+  
+        plt.figure(figsize=(10, 5))
+        plt.plot(days_list, balances, marker='x')
+        plt.xlabel('Day')
+        plt.ylabel('Total Invested Balance')
+        plt.title('Portfolio Performance')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+                    
+    def get_stock_graph_data(self, Stock) -> dict:
+        """get stock graph data - show progression of invested balance of a particular stock
+        return tuple - (list of days, list of invested_balances on each day)"""
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+
+        ticker = Stock.get_ticker()
+        cursor.execute(f"""
+            SELECT investment_value
+            FROM {self.current_simulation_id}
+            WHERE ticker = ?
+        """, (ticker,))
+        results = cursor.fetchall()
+        conn.close()
+
+        days = 0
+        balances = []
+        for (balance,) in results:
+            days += 1
+            balances.append(float(balance))
+
+        days_list = list(range(1, days + 1))
+
+        data = {
+        "days": days_list,
+        "balances": balances
+        }
+        return data
+  
+        plt.figure(figsize=(10, 5))
+        plt.plot(days_list, balances, marker='x')
+        plt.xlabel('Day')
+        plt.ylabel('Invested Balance')
+        plt.title('Stock Performance')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
 
     #test methods to run the simulation
     def testRun(self):
         """Run a test simulation with random parameters"""
         # 1 initialisation of startdate and stocks
-        self.randomiseStartDate()
-        self.create_stocks()
-        print("phase 1 complete: Stocks created and start date set.")
+        print("phase 1 complete: Stocks created and start date set and instance variables initialised.")
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
         # 2 cofiguration - new simulation
-        self.new_simulation()
+        # self.new_simulation()
         # self.set_timeframe(30)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
-        self.set_timeframe(365)
-        print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
+        # self.set_timeframe(365)
+        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
-        # # 2.5 configuration - load previous simulation
-        # self.load_prev_simulation('sim_20250721_5146')
-        # # self.set_timeframe(30)
-        # # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
+        # 2.5 configuration - load previous simulation
+        self.load_prev_simulation('sim_20250724_46828')
+        self.set_timeframe(1)
+        # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")
 
-        #3 simulation setup (purchase stocks and set strategies)
-        self.trade_each_stock()
-        print("phase 3 complete: Stocks traded and strategies set.")
+        # 3 simulation setup (purchase stocks and set strategies)
+        # self.trade_each_stock()
+        # print("phase 3 complete: Stocks traded and strategies set.")
 
         # 4 simulation Execution
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
+        self.load_prev_simulation('sim_20250724_46828')
+        self.set_timeframe(1)
 
-        # 5 simulation termination
-        self.end_simulation(new_simulation=False, days = 0)
-        print("phase 5 complete: Simulation ended and performance plotted.")
+        # # 5 simulation termination
+        # self.end_simulation(new_simulation=False, days = 0)
+        # print("phase 5 complete: Simulation ended and performance plotted.")
+
         
 
 

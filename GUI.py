@@ -7,9 +7,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIntValidator
 import sqlite3
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 from Stock import Stock
 from TradingSimulator import TradingSimulator
 from TradingStrategiesWidget import TradingStrategiesWidget
+
 
 
 class startWindow(QWidget):
@@ -66,12 +69,15 @@ class displaySimulation(QWidget):
         self.simulator = self.startWindow.simulator 
         if self.sim_id is None:
             self.simulator.new_simulation()
+            self.sim_id = self.simulator.get_sim_id()
+            print("new simulation started")
         else:
             self.simulator.load_prev_simulation(self.sim_id)
+            print(f"loading in simulation: {self.sim_id}")
             
         
         self.resize(1200, 600)
-        self.setWindowTitle("SIMULATION ID: " + self.simulator.get_sim_id())
+        self.setWindowTitle("SIMULATION ID: " + self.sim_id)
 
         #Total Balance and Cash Balance
         
@@ -80,7 +86,6 @@ class displaySimulation(QWidget):
         total_balance = cash_balance + invested_balance
         self.total_balance_label = QLabel("TOTAL BALANCE: £" + str(round(total_balance,2)))
         self.cash_balance_label = QLabel("CASH BALANCE: £" + str(round(cash_balance,2)))
-        self.invested_label = QLabel("INVESTED BALANCE: £" + str(round(invested_balance,2)))
         balance_layout = QVBoxLayout()
         balance_layout.addWidget(self.total_balance_label)
         balance_layout.addWidget(self.cash_balance_label)
@@ -125,17 +130,17 @@ class displaySimulation(QWidget):
         left_panel.addLayout(stock_grid)
 
         #Invested balance, portforlio performance
-        invested_label = QLabel("INVESTED BALANCE: £" + str(invested_balance))
-        portfolio_performance_label = QLabel("PERFORMANCE: + x%")
+        self.invested_label = QLabel("INVESTED BALANCE: £" + str(round(invested_balance,2)))
+        portfolio_performance = self.simulator.balance.getPortfolioPerformance()
+        self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(portfolio_performance,1)) +"x%")
         portfolio_layout = QVBoxLayout()
-        portfolio_layout.addWidget(invested_label)
-        portfolio_layout.addWidget(portfolio_performance_label)
+        portfolio_layout.addWidget(self.invested_label)
+        portfolio_layout.addWidget(self.portfolio_performance_label)
 
         #placeholder for graph
-        graph_placeholder = QLabel()
-        graph_placeholder.setFixedSize(800, 400)
-        graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
-
+        graph_widget = graphWidget("SIMULATION", self.simulator)
+        graph_widget.plot_graph()
+        
         #time input
         self.days_input = QLineEdit()
         self.days_input.setValidator(QIntValidator(1, 9999))
@@ -147,7 +152,7 @@ class displaySimulation(QWidget):
         #display balance, performance, graph and time input on the RHS
         right_panel = QVBoxLayout()
         right_panel.addLayout(portfolio_layout)
-        right_panel.addWidget(graph_placeholder)
+        right_panel.addWidget(graph_widget)
         right_panel.addLayout(time_layout)
 
         #run/end simulation
@@ -181,14 +186,13 @@ class displaySimulation(QWidget):
         """Display stock details in a new window."""
         self.stock_display = displayStock(self, self.simulator, Stock)
         self.stock_display.show()
-        self.hide()
+        self.close()
 
     def run_sim(self):
         days = self.get_days_input()
         if 0 < days < 10000:
             self.simulator.set_timeframe(days)
             self.simulator.run_simulation()
-            self.update_balances()
             self.reloadSimWindow()
 
     def get_days_input(self) -> int:
@@ -206,14 +210,7 @@ class displaySimulation(QWidget):
         self.new_window = displaySimulation(self.startWindow, self.sim_id)
         self.new_window.show()
         self.close()
-    def update_balances(self):
-        cash_balance = self.simulator.balance.getCurrentBalance()
-        invested_balance = self.simulator.balance.getTotalInvestedBalance()
-        total_balance = cash_balance + invested_balance
-        self.total_balance_label.setText("TOTAL BALANCE: £" + str(round(total_balance,2)))
-        self.cash_balance_label.setText("CASH BALANCE: £" + str(round(cash_balance,2)))
-   
-
+       
 
 class displayStock(QWidget):
     def __init__(self, simWindow, simulator, Stock):
@@ -241,10 +238,10 @@ class displayStock(QWidget):
         #stock details
         stock_details_grid = QGridLayout()
         #initial investment value
-        invested_title_label = QLabel("CASH INVESTED")
-        invested_label = QLabel(str("£" + str(round(self.Stock.get_cash_invested(),2))))
-        stock_details_grid.addWidget(invested_title_label,0,0)
-        stock_details_grid.addWidget(invested_label,1,0)
+        self.invested_title_label = QLabel("CASH INVESTED")
+        self.invested_label = QLabel(str("£" + str(round(self.Stock.get_cash_invested(),2))))
+        stock_details_grid.addWidget(self.invested_title_label,0,0)
+        stock_details_grid.addWidget(self.invested_label,1,0)
         #current investment value
         investment_value_title_label = QLabel("CURRENT INVESTMENT VALUE")
         investment_value_label = QLabel("£" + str(round(self.Stock.get_investment_value(),2)))
@@ -274,20 +271,19 @@ class displayStock(QWidget):
 
         #status bar - cash balance, number of stocks
         status_bar = QVBoxLayout()
-        self.cash_balance_label = QLabel("CASH BALANCE: £" + str(self.simulator.balance.getCurrentBalance()))
-        num_stocks_label = QLabel("NUMBER OF STOCKS OWNED: " + str(self.Stock.get_number_stocks()))
+        self.cash_balance_label = QLabel("CASH BALANCE: £" + str(round(self.simulator.balance.getCurrentBalance(),2)))
+        self.num_stocks_label = QLabel("NUMBER OF STOCKS OWNED: " + str(self.Stock.get_number_stocks()))
         status_bar.addWidget(self.cash_balance_label)
-        status_bar.addWidget(num_stocks_label)
+        status_bar.addWidget(self.num_stocks_label)
         right_panel.addLayout(status_bar)
 
         #trade bar - num of stock, price of stock, balance after purchase, trade confirmation
-        trade_widget = TradeWidget(self)
+        trade_widget = tradeWidget(self)
         right_panel.addWidget(trade_widget)
 
         #implement trading strategies - trigger displayStrategies
         self.trading_strat_button = QPushButton("IMPLEMENT TRADING STRATEGIES")
         right_panel.addWidget(self.trading_strat_button)
-        self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
         #self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
 
         #end trade
@@ -307,12 +303,14 @@ class displayStock(QWidget):
         self.strat_widget.exec()
 
     def endTrade(self):
+        start_window = self.simWindow.startWindow
+        sim_id = self.simulator.get_sim_id()
+        newSimWindow = displaySimulation(start_window, sim_id)
+        newSimWindow.show()
         self.close()
-        #insert function - update simWindow data
-        self.simWindow.show()
+        
 
-
-class TradeWidget(QWidget):
+class tradeWidget(QWidget):
     def __init__(self, stockWindow):
         super().__init__()
         self.stockWindow = stockWindow
@@ -381,7 +379,6 @@ class TradeWidget(QWidget):
         
         #confirm trade button
         confirm_button = QPushButton(f"CONFIRM {mode}")
-        #confirm_button.clicked.connect(self.trade_stock(stock_input))
         confirm_button.clicked.connect(lambda _, m=mode: self.trade_stock(m))
 
         final_layout = QVBoxLayout()
@@ -423,14 +420,13 @@ class TradeWidget(QWidget):
         ticker = self.Stock.get_ticker()
         confirmed = self.simulator.trade_a_stock(ticker, amount)
         if not confirmed:
-            print("trade unsuccesful")
+            print("Trade unsuccesful: insufficient balance to purchase stocks.")
             #open micro window: trade unsuccesful
         else:
-            print("trade succesful")
+            print("Trade succesful")
             #open micro window: trade succesful
             #open and close stock window to update change
             self.reloadStockWindow()
-            self.stockWindow.simWindow.update_balances()
 
     def reloadStockWindow(self):
         """reload window so that it dispalys changes in data"""
@@ -504,6 +500,47 @@ class displaySims(QWidget):
     def displayPrevSimFunc(self, sim_id):
         self.startWindow.displaySimDetailsFunc(sim_id)
         self.close()
+
+
+class graphWidget(QWidget):
+    def __init__(self, type: str, simulator):
+        super().__init__()
+        self.type = type
+        self.simulator = simulator
+
+        self.figure = Figure(figsize=(5, 5), dpi=100)
+        self.canvas = FigureCanvas(self.figure)
+        self.ax = self.figure.add_subplot(111)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+
+    def plot_graph(self):
+        """Plot graph data on specified graph."""
+        if self.type == "SIMULATION":
+            balance_type = "VALUE OF PORTFOLIO"
+            data = self.simulator.get_sim_graph_data()
+        elif self.type == "STOCK":
+            balance_type = "VALUE OF STOCK"
+            data = self.simulator.get_stock_graph_data()
+        else: 
+            raise ValueError(f"type: {self.type} is invalid when initialising graphWidget. 'SIMULATION' or 'STOCK' only")
+
+        day_data = data["days"]
+        balance_data = data["balances"]
+
+        self.ax.clear()  # Clear previous plots
+        self.ax.plot(day_data, balance_data, marker='x')
+        self.ax.set_title(self.type + " PERFORMANCE")
+        self.ax.set_xlabel("Day")
+        self.ax.set_ylabel(balance_type)
+        self.ax.grid(True)
+        self.canvas.draw()
+        
+
+            
+
 
 
 # Test function
