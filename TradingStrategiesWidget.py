@@ -68,4 +68,6 @@ class TradingStrategiesWidget(QDialog):
                 self.simulator.strategies.deactivate(name)
         QMessageBox.information(self, "Saved", "Strategies updated!")
         self.accept()
-        self.parent().update_balances()
+        parent = self.parent()
+        if hasattr(parent, "simWindow") and hasattr(parent.simWindow, "update_balances"):
+            parent.simWindow.update_balances()
