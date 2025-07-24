@@ -134,20 +134,19 @@ class Stock:
     def set_stock_from_simulation(self, simulation_id) -> None:
         """Set the stock instance variables based on simulation data 
         using the start and end date from the simulation timeline."""
-        
-        start_date, end_date = self.get_start_and_end_dates(simulation_id)
-
         with sqlite3.connect("data.db") as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
                 SELECT cash_invested, cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks
                 FROM {simulation_id}
-                WHERE date = ? AND ticker = ?
-            """, (end_date, self.ticker))
+                WHERE ticker = ?
+                ORDER BY entry_number DESC
+                LIMIT 10
+            """, (self.ticker,))
             data = cursor.fetchone()
 
         if not data:
-            raise ValueError(f"No simulation data found for ID {simulation_id} on {end_date} for ticker {self.ticker}")
+            raise ValueError(f"No simulation data found for ID: {simulation_id} on last entry for ticker: {self.ticker}")
 
         # Set instance variables
         self.cash_invested = data[0]
@@ -158,6 +157,7 @@ class Stock:
         self.number_stocks = data[5]
 
         # Set value-based fields
+        start_date, end_date = self.get_start_and_end_dates()
         self.opening_stock_value = self.fetchOpeningValue(self.ticker, start_date)
         self.current_stock_value = self.fetchClosingValue(self.ticker, end_date)
         self.opening_stock_performance = Stock.fetchOpeningPerformance(self.ticker, start_date)
@@ -226,7 +226,7 @@ class Stock:
             raise TypeError("Date must be a string or datetime or date object.")
         #if the start date is before the first date in the database, set it to the first date
         if not Stock.fetchDates(startDate, todays_date, ticker):
-            startDate = Stock.get_start_and_end_dates('historicalData')[0]
+            startDate = Stock.get_start_and_end_dates()[0]
         
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
@@ -285,19 +285,19 @@ class Stock:
         return data[0]
 
     @staticmethod
-    def get_start_and_end_dates(simulation_id) -> tuple[str, str]:
-        """Fetch the start and end dates of the simulation ."""
+    def get_start_and_end_dates() -> tuple[str, str]:
+        """Fetch the start and end dates from the historical data ."""
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
         cursor.execute(f"""         
             SELECT MIN(date), MAX(date)
-            FROM {simulation_id}
+            FROM historicalData
         """)
         dates = cursor.fetchone()
         cursor.close()
         conn.close()
         
         if not dates or not all(dates):
-            raise ValueError(f"No valid dates found for simulation ID {simulation_id}")
+            raise ValueError(f"No valid dates found in historical data")
         
         return dates[0], dates[1]

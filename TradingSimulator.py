@@ -115,6 +115,7 @@ class TradingSimulator:
         #default start and end dates match the database dates
         self.start_date = self.database.getStartDate()
         self.end_date = self.database.getEndDate() 
+        self.randomiseStartDate()
         
         self.start_balance = start_balance
         self.balance = Balance(start_balance)
@@ -200,7 +201,7 @@ class TradingSimulator:
         cursor = conn.cursor()
         
         cursor.execute(f"""
-            CREATE TABLE IF NOT EXISTS {self.current_simulation_id} (
+            CREATE TABLE IF NOT EXISTS "{self.current_simulation_id}" (
                 entry_number INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT,
                 current_balance REAL,
@@ -235,7 +236,7 @@ class TradingSimulator:
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
             (date, current_balance, total_invested_balance, portfolio_value, portfolio_performance, ticker, cash_invested,
-                cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks)
+            cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
@@ -583,7 +584,7 @@ class TradingSimulator:
 
     # 6 plot graphs
     def get_sim_graph_data(self) -> dict:
-        """plot simulation graph - show progression of total invested balance
+        """plot simulation graph - show progression of portfolio value
         return tuple - (list of days, list of total_invested_balances on each day)"""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
@@ -664,9 +665,7 @@ class TradingSimulator:
     def testRun(self):
         """Run a test simulation with random parameters"""
         # 1 initialisation of startdate and stocks
-        self.randomiseStartDate()
-        self.create_stocks()
-        print("phase 1 complete: Stocks created and start date set.")
+        print("phase 1 complete: Stocks created and start date set and instance variables initialised.")
         print("starting balance = " + str(self.balance.getStartBalance()))
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
@@ -678,7 +677,7 @@ class TradingSimulator:
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
         # 2.5 configuration - load previous simulation
-        self.load_prev_simulation('sim_20250724_4921')
+        self.load_prev_simulation('sim_20250724_46828')
         self.set_timeframe(1)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
         # self.set_timeframe(10000)
@@ -691,7 +690,7 @@ class TradingSimulator:
         # 4 simulation Execution
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
-        self.load_prev_simulation('sim_20250724_4921')
+        self.load_prev_simulation('sim_20250724_46828')
         self.set_timeframe(1)
 
         # # 5 simulation termination
