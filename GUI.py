@@ -2,9 +2,8 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
     QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
-    QGroupBox, QSpinBox, QMessageBox, QFormLayout, QSizePolicy, QScrollArea
+    QMessageBox, QFormLayout, QSizePolicy, QScrollArea
 )
-from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIntValidator
 import sqlite3
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -12,8 +11,6 @@ from matplotlib.figure import Figure
 from Stock import Stock
 from TradingSimulator import TradingSimulator
 from TradingStrategiesWidget import TradingStrategiesWidget
-
-
 
 class startWindow(QWidget):
     def __init__(self):
@@ -132,13 +129,13 @@ class displaySimulation(QWidget):
         #Invested balance, portforlio performance
         self.invested_label = QLabel("INVESTED BALANCE: £" + str(round(invested_balance,2)))
         portfolio_performance = self.simulator.balance.getPortfolioPerformance()
-        self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(portfolio_performance,1)) +"x%")
+        self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(portfolio_performance,1)) +"%")
         portfolio_layout = QVBoxLayout()
         portfolio_layout.addWidget(self.invested_label)
         portfolio_layout.addWidget(self.portfolio_performance_label)
 
-        #placeholder for graph
-        graph_widget = graphWidget("SIMULATION", self.simulator)
+        #simulation graph
+        graph_widget = graphWidget(self.simulator, None)
         graph_widget.plot_graph()
         
         #time input
@@ -229,11 +226,10 @@ class displayStock(QWidget):
         stock_name_label = QLabel(self.Stock.get_name())
         left_panel.addWidget(stock_name_label)
 
-        #placeholder for graph
-        graph_placeholder = QLabel()
-        graph_placeholder.setFixedSize(400, 400)
-        graph_placeholder.setStyleSheet("background-color: lightgray; border: 1px solid black;")
-        left_panel.addWidget(graph_placeholder)
+        #stock graph
+        graph_widget = graphWidget(self.simulator, self.Stock)
+        graph_widget.plot_graph()
+        left_panel.addWidget(graph_widget)
 
         #stock details
         stock_details_grid = QGridLayout()
@@ -322,11 +318,15 @@ class tradeWidget(QWidget):
 
         #tab buttons (PURCHASE / SELL)
         button_layout = QHBoxLayout()
+        #PURCHASE
         self.purchase_tab_btn = QPushButton("PURCHASE")
-        self.sell_tab_btn = QPushButton("SELL")
-        self.purchase_tab_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
-        self.sell_tab_btn.clicked.connect(lambda: self.stack.setCurrentIndex(1))
+        self.active_button_style(True, self.purchase_tab_btn)
+        self.purchase_tab_btn.clicked.connect(lambda: self.click_tab_btn(0))
         button_layout.addWidget(self.purchase_tab_btn)
+        #SELL
+        self.sell_tab_btn = QPushButton("SELL")
+        self.active_button_style(False, self.sell_tab_btn)
+        self.sell_tab_btn.clicked.connect(lambda: self.click_tab_btn(1))
         button_layout.addWidget(self.sell_tab_btn)
 
         #stack Layout for switching between purchase/sell
@@ -341,7 +341,7 @@ class tradeWidget(QWidget):
         self.setLayout(layout)
 
     def create_tab(self, mode):
-        #mode = PURCHASE or SELL
+        #mode = PURCHASE or SELLL
         widget = QWidget()
 
         lhs_layout = QVBoxLayout()
@@ -386,7 +386,7 @@ class tradeWidget(QWidget):
         final_layout.addWidget(confirm_button)
         widget.setLayout(final_layout)
         return widget
-    
+
     def update_labels(self, stock_input: str, mode):
         if not stock_input.strip().isdigit():
             self.price_outputs[mode].clear()
@@ -405,6 +405,56 @@ class tradeWidget(QWidget):
         
         self.price_outputs[mode].setText(f"£{total_price:,.2f}")
         self.balance_outputs[mode].setText(f"£{new_balance:,.2f}")
+
+    def click_tab_btn(self, index: int):
+        self.stack.setCurrentIndex(index)
+        #change the style of buttons to indicate which tab is open
+        if index == 0:
+            active = True
+        else:
+            active = False
+        self.active_button_style(active, self.purchase_tab_btn)
+        self.active_button_style((not active), self.sell_tab_btn)
+
+    def active_button_style(self, active_or_innactive: bool, button):
+        if active_or_innactive:
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #007BFF;     /* Modern blue */
+                    color: white;                  /* Text color */
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                }
+
+                QPushButton:hover {
+                    background-color: #3399FF;     /* Lighter blue on hover */
+                }
+
+                QPushButton:pressed {
+                    background-color: #0066CC;     /* Darker blue when pressed */
+                }
+            """)
+        if not active_or_innactive:
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #cccccc;     /* Light grey background */
+                    color: #333333;                /* Darker grey text */
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    font-weight: semi-bold;
+                }
+
+                QPushButton:hover {
+                    background-color: #bbbbbb;     /* Slightly darker on hover */
+                }
+
+                QPushButton:pressed {
+                    background-color: #aaaaaa;     /* Darker still when pressed */
+                }
+            """)
 
     def trade_stock(self, mode):
         text = self.stock_inputs[mode].text()
@@ -435,10 +485,6 @@ class tradeWidget(QWidget):
         self.close()
 
 
-class displayStrategies(QWidget):
-    n = None
-
-
 class displaySims(QWidget):
     def __init__(self, startWindow):
         super().__init__()
@@ -446,24 +492,26 @@ class displaySims(QWidget):
         self.resize(1200, 600)
         self.setWindowTitle("Previous Simulations")
 
-        layout = QVBoxLayout()
+        vlayout = QVBoxLayout()
         #loop through all the simulations and display their names
         self.sim_IDS = self.get_sim_IDS()
         for sim_id in self.sim_IDS:
-            button = QPushButton(sim_id)
-            button.setFixedSize(200, 40)
-            button.clicked.connect(lambda checked=False, id=sim_id: self.displayPrevSimFunc(id))
-            layout.addWidget(button)
+            prev_sim_button = QPushButton(sim_id)
+            prev_sim_button.setFixedSize(200, 40)
+            prev_sim_button.clicked.connect(lambda checked=False, id=sim_id: self.displayPrevSimFunc(id))
+            vlayout.addWidget(prev_sim_button)
 
         #back button
         back_button = QPushButton("GO BACK")
+        back_button.setFixedSize(200, 40)
         back_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
-        layout.addWidget(back_button)
+        vlayout.addWidget(back_button)
 
-        #set the layout and make it scrollable
+        #centre buttons in layout
         main_layout = QHBoxLayout()
-        main_layout.addLayout(layout)
-        
+        main_layout.addLayout(vlayout)
+
+        #make the layout into a scrollable widget
         container_widget = QWidget()
         container_widget.setLayout(main_layout)
 
@@ -503,10 +551,14 @@ class displaySims(QWidget):
 
 
 class graphWidget(QWidget):
-    def __init__(self, type: str, simulator):
+    def __init__(self, simulator, Stock):
         super().__init__()
-        self.type = type
         self.simulator = simulator
+        self.Stock = Stock
+
+        self.type = "STOCK"
+        if self.Stock is None:
+            self.type = "SIMULATION"
 
         self.figure = Figure(figsize=(5, 5), dpi=100)
         self.canvas = FigureCanvas(self.figure)
@@ -523,7 +575,7 @@ class graphWidget(QWidget):
             data = self.simulator.get_sim_graph_data()
         elif self.type == "STOCK":
             balance_type = "VALUE OF STOCK"
-            data = self.simulator.get_stock_graph_data()
+            data = self.simulator.get_stock_graph_data(self.Stock)
         else: 
             raise ValueError(f"type: {self.type} is invalid when initialising graphWidget. 'SIMULATION' or 'STOCK' only")
 
