@@ -317,7 +317,7 @@ class displayStock(QWidget):
         #implement trading strategies - trigger displayStrategies
         self.trading_strat_button = QPushButton("IMPLEMENT TRADING STRATEGIES")
         right_panel.addWidget(self.trading_strat_button)
-        self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
+        #self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
 
         #end trade
         self.end_trade_button = QPushButton("END TRADE")
@@ -517,9 +517,13 @@ class tradeWidget(QWidget):
 
     def reloadStockWindow(self):
         """reload window so that it dispalys changes in data"""
-        self.new_window = displayStock(self.stockWindow.simWindow, self.stockWindow.simulator, self.Stock)
-        self.new_window.show()
+        sim_window = self.stockWindow.simWindow
+        simulator = self.stockWindow.simulator
+        stock = self.Stock
+        self.new_stock_window = displayStock(sim_window, simulator, stock)
+        self.new_stock_window.show()
         self.close()
+        self.stockWindow.close()
 
 
 class displaySims(QWidget):

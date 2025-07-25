@@ -73,7 +73,4 @@ class TradingStrategiesWidget(QDialog):
         if hasattr(parent, "simWindow") and hasattr(parent.simWindow, "update_balances"):
             parent.simWindow.update_balances()
             self.simulator.strategies.save_to_db(self.simulator.get_sim_id())
-<<<<<<< HEAD
-=======
     
->>>>>>> a9ec8db30122b014cc0e79c02dc55f7f7fd71296
