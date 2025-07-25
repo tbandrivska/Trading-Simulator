@@ -10,18 +10,18 @@ import sqlite3
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from Stock import Stock
-# from TradingSimulator import TradingSimulator
-# from TradingStrategiesWidget import TradingStrategiesWidget
+from TradingStrategiesWidget import TradingStrategiesWidget
 
 class loadingWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.resize(1200, 600)
         self.setWindowTitle("Trading Simulator")
+        self.start_balance = 10000
 
         title_label = QLabel("TRADING SIMULATOR")
-        loading_label = QLabel("...LOADING...")
         title_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+        loading_label = QLabel("...LOADING...")
         loading_label.setFont(QFont("Arial", 18))
 
         #centre labels in window
@@ -32,11 +32,11 @@ class loadingWindow(QWidget):
         self.setLayout(loading_layout)
 
         self.show()
-        QTimer.singleShot(100, self.importation)
+        QTimer.singleShot(100, lambda: self.load_simulator(self.start_balance))
     
-    def importation(self):
+    def load_simulator(self, starting_balance):
         from TradingSimulator import TradingSimulator
-        self.TradingSimulator = TradingSimulator(10000)
+        self.TradingSimulator = TradingSimulator(starting_balance) #Initialise simulator with a default starting balance
         self.startWindow = startWindow(self.TradingSimulator)
         self.startWindow.show()
         self.close()
@@ -45,22 +45,28 @@ class loadingWindow(QWidget):
 class startWindow(QWidget):
     def __init__(self, tradingSimulator):
         super().__init__()
-        #self.simulator = TradingSimulator(10000)  #Initialise simulator with a default balance
         self.simulator = tradingSimulator
         self.resize(1200, 600)
         self.setWindowTitle("Start Menu")
 
+        #dispaly application title
+        self.title_label = QLabel("TRADING SIMULATOR")
+        self.title_label.setFont(QFont("Arial", 26, QFont.Weight.Bold))
+        self.title_label.setFixedSize(300, 60)
         #display 3 options in the start menu - new simulation, continue a previous simulation, exit app
         self.newSimButton = QPushButton("New Simulation")
         self.prevSimButton = QPushButton("Previous Simulations")
         self.exitButton = QPushButton("Exit")
+        
 
-        #size the buttons
+        #size the buttons and change their font
         for button in [self.newSimButton, self.prevSimButton, self.exitButton]:
-            button.setFixedSize(200, 40)
+            button.setFixedSize(300, 60)
+            button.setFont(QFont("Arial", 16))
 
         #layout: buttons in a vertical line and centred
         vLayout = QVBoxLayout()
+        vLayout.addWidget(self.title_label)
         vLayout.addWidget(self.newSimButton)
         vLayout.addWidget(self.prevSimButton)
         vLayout.addWidget(self.exitButton)

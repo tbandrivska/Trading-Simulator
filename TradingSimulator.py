@@ -298,12 +298,12 @@ class TradingSimulator:
         #set simulation ID
         self.current_simulation_id = sim_id
 
-        #set new start date to the last date in the simulation
-        cursor.execute(f"SELECT date FROM {sim_id} ORDER BY date DESC LIMIT 1")
-        last_date = cursor.fetchone()
+        #set new start date to the day after the last date in the simulation
+        cursor.execute(f"SELECT date FROM {sim_id} ORDER BY entry_number DESC LIMIT 1")
+        last_date = cursor.fetchone()[0]
         if not last_date:
             raise ValueError(f"No data found for simulation {sim_id}")
-        self.start_date = str(last_date[0])
+        self.start_date = self.get_next_day(last_date)
 
         #set balance
         self.balance.set_balance_from_sim(sim_id)
@@ -611,16 +611,6 @@ class TradingSimulator:
         "balances": balances
         }
         return data
-        
-  
-        plt.figure(figsize=(10, 5))
-        plt.plot(days_list, balances, marker='x')
-        plt.xlabel('Day')
-        plt.ylabel('Total Invested Balance')
-        plt.title('Portfolio Performance')
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
                     
     def get_stock_graph_data(self, Stock) -> dict:
         """get stock graph data - show progression of invested balance of a particular stock
@@ -650,15 +640,6 @@ class TradingSimulator:
         "balances": balances
         }
         return data
-  
-        plt.figure(figsize=(10, 5))
-        plt.plot(days_list, balances, marker='x')
-        plt.xlabel('Day')
-        plt.ylabel('Invested Balance')
-        plt.title('Stock Performance')
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
 
 
     #test methods to run the simulation
