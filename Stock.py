@@ -13,11 +13,11 @@ class Stock:
         self.number_stocks = 0
         self.cash_invested = 0.0
         self.cash_withdrawn = 0.0
+        self.investment_value = 0.0 #post trade and. daily
         
         #updated daily
         self.current_stock_value = opening_value
         self.current_stock_performance = opening_performance
-        self.investment_value = 0.0
         self.investment_performance = 0.0
         
         
@@ -126,14 +126,11 @@ class Stock:
         #update the current value and performance of the stock based on the date
         self.set_current_value(Stock.fetchClosingValue(self.ticker, date))
         self.update_current_stock_performance()
-
-        # update the investment value and performance
         self.update_investment_value()
         self.update_investment_performance()
 
     def set_stock_from_simulation(self, simulation_id) -> None:
-        """Set the stock instance variables based on simulation data 
-        using the start and end date from the simulation timeline."""
+        """Set the stock instance variables based on last entry in simulation data."""
         with sqlite3.connect("data.db") as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
@@ -141,7 +138,7 @@ class Stock:
                 FROM {simulation_id}
                 WHERE ticker = ?
                 ORDER BY entry_number DESC
-                LIMIT 10
+                LIMIT 1
             """, (self.ticker,))
             data = cursor.fetchone()
 

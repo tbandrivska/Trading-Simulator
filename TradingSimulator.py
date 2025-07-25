@@ -1,9 +1,7 @@
 import sqlite3
 from typing import Dict, List
 from datetime import datetime, timedelta, date
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from collections import Counter
+from collections import OrderedDict
 import random
 from Stock import Stock
 from Balance import Balance
@@ -68,7 +66,7 @@ class TradingSimulator:
         total_days = self.current_timeframe_in_days
         
         #find the restart loop date and historical data end date
-        restart_loop_date = self.loop_restart_date()
+        restart_loop_date = self.get_loop_restart_date()
         historical_data_end_date = self.database.getEndDate() 
 
         #convert dates to datetime.date objects if they are strings or datetime objects
@@ -105,6 +103,7 @@ class TradingSimulator:
         result = cursor.fetchone()[0]
         conn.close()
         return result if result else date  # Fallback to same date if no previous found
+
 
     # 1 initialisation
     def __init__(self, start_balance: float = 10000):
@@ -314,6 +313,7 @@ class TradingSimulator:
     
         print(f"previous simultion: {sim_id} has been loaded in")
 
+
     # 2.3 configuration - timeframe
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date"""
@@ -387,12 +387,10 @@ class TradingSimulator:
                     amount = int(input()) # Convert string input to integer (add input validation later)
                     try:
                         if self.trade_a_stock(ticker, amount):
-                            #self.record_transaction(stock, date)
                             trading = False
                     except ValueError:
                         print("Invalid input. Please enter a valid number.")
                 elif user_input == "no":
-                    #self.record_transaction(stock, date)
                     trading = False
                 else:
                     print("Invalid input. Please enter 'yes' or 'no'.")
@@ -478,7 +476,7 @@ class TradingSimulator:
                 self.balance.daily_balance_update(self.current_simulation_id) #type: ignore 
                 self.record_transaction(stock, date)
         if not self.validDates:
-            self.start_date = self.loop_restart_date()                           
+            self.start_date = self.get_loop_restart_date()                           
 
     def calc_days_left(self):
         """calculate the number of days left over after running an incomplete simulation"""
@@ -500,7 +498,7 @@ class TradingSimulator:
 
         self.days_left_in_simulation = days_left
 
-    def loop_restart_date(self):
+    def get_loop_restart_date(self):
         """If a time frame is longer than we have days for, use the final date we have
         to locate a previous date with similar values. Now, everytime the final date is 
         reached, we continue from this date with similar values"""
@@ -559,7 +557,7 @@ class TradingSimulator:
         conn.close()
 
         if next_day is None: 
-            next_day = self.loop_restart_date()
+            next_day = self.get_loop_restart_date()
 
         return next_day 
  
@@ -584,62 +582,137 @@ class TradingSimulator:
 
     # 6 plot graphs
     def get_sim_graph_data(self) -> dict:
-        """plot simulation graph - show progression of portfolio value
-        return tuple - (list of days, list of total_invested_balances on each day)"""
+        """
+        Plot simulation graph - show progression of portfolio value.
+        Returns a dict: { "days": [1, 2, 3, ...], "balances": [1000, 1050, 1025, ...] }
+        Only starts counting days after the first investment.
+        """
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
+        #find first entry where an investment is made 
         cursor.execute(f"""
-            SELECT entry_number, portfolio_value
+            SELECT entry_number
             FROM {self.current_simulation_id}
+            WHERE portfolio_value > 0
+            ORDER BY entry_number ASC
+            LIMIT 1
         """)
+        results = cursor.fetchone()
+
+        #if no investements have ever been made, return no data
+        if results is None:
+            return {
+            "days": [0],
+            "balances": [0]
+            }
+        first_entry = int(results[0])
+
+        #retrieve portfolio values for each day, starting from when the first investment was made
+        cursor.execute(f"""
+            SELECT date, portfolio_value
+            FROM {self.current_simulation_id}
+            WHERE entry_number >= ?
+            ORDER BY entry_number ASC
+        """,(first_entry,))
         results = cursor.fetchall()
         conn.close()
 
-        number_of_stocks = len(self.database.getTickers())
-        days = 0
         balances = []
-        for entry, balance in results:
-            if int(entry) % number_of_stocks == 0:
-                days += 1
-                balances.append(float(balance))
+        current_date = None
+        last_portfolio_value = None
 
-        days_list = list(range(1, days + 1))
+        for date, portfolio_value in results:
+            if current_date is None:
+                # first row
+                current_date = date
+                last_portfolio_value = portfolio_value
+            elif date == current_date:
+                # same date -> update last portfolio value to this row
+                last_portfolio_value = portfolio_value
+            else:
+                # date changed -> save last portfolio value for previous date
+                if last_portfolio_value is not None:
+                    balances.append(float(last_portfolio_value))
+                current_date = date
+                last_portfolio_value = portfolio_value
 
-        data = {
-        "days": days_list,
-        "balances": balances
-        }
-        return data
+        # append portfolio value for last date
+        if last_portfolio_value is not None:
+            balances.append(float(last_portfolio_value))
+
+        days = list(range(1, len(balances) + 1))
+
+        return {"days": days, "balances": balances}
                     
     def get_stock_graph_data(self, Stock) -> dict:
-        """get stock graph data - show progression of invested balance of a particular stock
-        return tuple - (list of days, list of invested_balances on each day)"""
+        """
+        get stock graph data - show progression of invested balance of a particular stock
+        Returns a dict: { "days": [1, 2, 3, ...], "balances": [1000, 1050, 1025, ...] }
+        Only starts counting days after the first investment.
+        """
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
         ticker = Stock.get_ticker()
+
+        #find first entry where a stock is purchased
         cursor.execute(f"""
-            SELECT investment_value
+            SELECT entry_number
             FROM {self.current_simulation_id}
             WHERE ticker = ?
-        """, (ticker,))
+            AND number_of_stocks > 0
+            ORDER BY entry_number ASC
+            LIMIT 1
+        """,(ticker,))
+        results = cursor.fetchone()
+
+        #if this stock has never been purchased, return no data
+        if results is None:
+            data = {
+            "days": [0],
+            "balances": [0]
+            }
+            return data
+
+        first_purchase = int(results[0])
+
+        #return investment value for a stock, starting from when the first purchase was made
+        cursor.execute(f"""
+            SELECT date, investment_value
+            FROM {self.current_simulation_id}
+            WHERE entry_number >= ?
+            AND ticker = ?
+        """, (first_purchase, ticker,))
         results = cursor.fetchall()
         conn.close()
 
-        days = 0
         balances = []
-        for (balance,) in results:
-            days += 1
-            balances.append(float(balance))
+        current_date = None
+        last_investment_value = None
 
-        days_list = list(range(1, days + 1))
+        for date, investment_value in results:
+            if current_date is None:
+                # first row
+                current_date = date
+                last_investment_value = investment_value
+            elif date == current_date:
+                # same date -> update last portfolio value to this row
+                last_investment_value = investment_value
+            else:
+                # date changed -> save last portfolio value for previous date
+                if last_investment_value is not None:
+                    balances.append(float(last_investment_value))
+                current_date = date
+                last_investment_value = investment_value
 
-        data = {
-        "days": days_list,
-        "balances": balances
-        }
-        return data
+        # append portfolio value for last date
+        if last_investment_value is not None:
+            balances.append(float(last_investment_value))
+
+        days = list(range(1, len(balances) + 1))
+
+        return {"days": days, "balances": balances}
 
 
     #test methods to run the simulation

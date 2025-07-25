@@ -611,7 +611,7 @@ class graphWidget(QWidget):
             balance_type = "VALUE OF PORTFOLIO"
             data = self.simulator.get_sim_graph_data()
         elif self.type == "STOCK":
-            balance_type = "VALUE OF STOCK"
+            balance_type = "VALUE OF INVESTMENT"
             data = self.simulator.get_stock_graph_data(self.Stock)
         else: 
             raise ValueError(f"type: {self.type} is invalid when initialising graphWidget. 'SIMULATION' or 'STOCK' only")
@@ -620,7 +620,7 @@ class graphWidget(QWidget):
         balance_data = data["balances"]
 
         self.ax.clear()  # Clear previous plots
-        self.ax.plot(day_data, balance_data, marker='x')
+        self.ax.plot(day_data, balance_data, marker='.')
         self.ax.set_title(self.type + " PERFORMANCE")
         self.ax.set_xlabel("Day")
         self.ax.set_ylabel(balance_type)

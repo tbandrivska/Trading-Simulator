@@ -54,6 +54,7 @@ class Balance:
             self.totalInvestedBalance += price
             Stock.set_cash_invested(Stock.get_cash_invested() + price)
             Stock.set_number_stocks(Stock.get_number_stocks() + amount)
+            Stock.update_investment_value()
             return True
         else:
             print("Insufficient balance to purchase stocks.")
@@ -67,6 +68,7 @@ class Balance:
             self.totalInvestedBalance -= price
             Stock.set_cash_withdrawn(Stock.get_cash_withdrawn() + price)
             Stock.set_number_stocks(Stock.get_number_stocks() - amount)
+            Stock.update_investment_value()
             return True
         else:
             print("Insufficient stocks to sell.")
