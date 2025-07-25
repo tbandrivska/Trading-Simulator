@@ -145,5 +145,3 @@ class Database:
         self.updateData()
 
     
-test:Database = Database()
-test.initialiseDatabase()

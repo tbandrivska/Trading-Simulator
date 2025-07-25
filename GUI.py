@@ -118,53 +118,69 @@ class displaySimulation(QWidget):
         cash_balance = self.simulator.balance.getCurrentBalance()
         invested_balance = self.simulator.balance.getTotalInvestedBalance()
         total_balance = cash_balance + invested_balance
-        self.total_balance_label = QLabel("TOTAL BALANCE: £" + str(round(total_balance,2)))
-        self.cash_balance_label = QLabel("CASH BALANCE: £" + str(round(cash_balance,2)))
+        self.total_balance_label = QLabel("TOTAL BALANCE: $" + str(round(total_balance,2)))
+        self.cash_balance_label = QLabel("CASH BALANCE: $" + str(round(cash_balance,2)))
         balance_layout = QVBoxLayout()
         balance_layout.addWidget(self.total_balance_label)
         balance_layout.addWidget(self.cash_balance_label)
 
         #Stock tabel: name, performannce, value
         stock_grid = QGridLayout()
-        for i in range(4):
-            if i%2 == 0:
-                stock_grid.setColumnMinimumWidth(i,90)
-            else:
-                stock_grid.setColumnMinimumWidth(i,60)
-        for i in range(5):
-            stock_grid.setRowMinimumHeight(i,60)
 
         for i in range(10):
             Stock = self.get_stock(i)
-            stock_details = QVBoxLayout()
 
             stock_name = Stock.get_name()
             stock_button = QPushButton(stock_name)
+            tradeWidget.active_button_style(True, stock_button)
             stock_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             stock_button.clicked.connect(lambda _, s=Stock: self.displayStockFunc(s))
 
+            stock_numbers = QFormLayout()
             stock_performance = round(Stock.get_current_stock_performance(),1)
-            performance_label = QLabel(str(stock_performance) + "%")
-            stock_details.addWidget(performance_label)
+            display_stock_performance = QLineEdit()
+            self.style_qlineEdit(display_stock_performance)
+            display_stock_performance.setReadOnly(True)
+            display_stock_performance.setText(str(stock_performance) + "%")
+            stock_numbers.addRow("PERFORMANCE:", display_stock_performance)
 
             stock_value = round(Stock.get_current_stock_value(),2)
-            value_label = QLabel("£" + str(stock_value))
-            stock_details.addWidget(value_label)
+            display_stock_value = QLineEdit()
+            self.style_qlineEdit(display_stock_value)
+            display_stock_value.setReadOnly(True)
+            display_stock_value.setText("$" + str(stock_value))
+            stock_numbers.addRow("VALUE:", display_stock_value)
+
+            stocks_owned = Stock.get_number_stocks()
+            display_stocks_owned = QLineEdit()
+            self.style_qlineEdit(display_stocks_owned)
+            display_stocks_owned.setReadOnly(True)
+            display_stocks_owned.setText(str(stocks_owned))
+            stock_numbers.addRow("OWNED:", display_stocks_owned)
             
             if(i<5):
-                stock_grid.addWidget(stock_button,i,0)
-                stock_grid.addLayout(stock_details,i,1)
+                stock_grid.addLayout(stock_numbers,i,0)
+                stock_grid.addWidget(stock_button,i,1)
+            
             else:
-                stock_grid.addWidget(stock_button,(i-5),2)
-                stock_grid.addLayout(stock_details,(i-5),3)
+                stock_grid.addLayout(stock_numbers,(i-5),2)
+                stock_grid.addWidget(stock_button,(i-5),3)
+                
+        #stylise the grid by making it into a widget
+        stock_info_widget = QWidget()
+        stock_info_widget.setLayout(stock_grid)
+        stock_info_widget.setStyleSheet("background-color: #333333; color: white;")
+        stock_info_widget.setMinimumSize(800, 500)
+        stock_info_widget.setMaximumSize(800, 700)
 
         #display balances and stocks on the LHS
         left_panel = QVBoxLayout()
         left_panel.addLayout(balance_layout)
-        left_panel.addLayout(stock_grid)
+        #left_panel.addLayout(stock_grid)
+        left_panel.addWidget(stock_info_widget)
 
         #Invested balance, portforlio performance
-        self.invested_label = QLabel("INVESTED BALANCE: £" + str(round(invested_balance,2)))
+        self.invested_label = QLabel("INVESTED BALANCE: $" + str(round(invested_balance,2)))
         portfolio_performance = self.simulator.balance.getPortfolioPerformance()
         self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(portfolio_performance,1)) +"%")
         portfolio_layout = QVBoxLayout()
@@ -209,6 +225,18 @@ class displaySimulation(QWidget):
         #button actions
         self.run_button.clicked.connect(self.run_sim)
         self.end_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
+
+    @staticmethod
+    def style_qlineEdit(qlineEdit):
+        qlineEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #1e1e1e;
+                color: #dcdcdc;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+        """)
 
     def get_stock(self, index: int) -> Stock: 
         """Get stock object by index."""
@@ -453,11 +481,17 @@ class tradeWidget(QWidget):
         self.active_button_style(active, self.purchase_tab_btn)
         self.active_button_style((not active), self.sell_tab_btn)
 
-    def active_button_style(self, active_or_innactive: bool, button):
+    @staticmethod
+    def active_button_style(active_or_innactive: bool, button):
+        """
+        Change the style of a button based on wether its active or not
+        if active (active_or_innactive = True) -> button is blue
+        if innactive (active_or_innactive = False) -> button is grey
+        """
         if active_or_innactive:
             button.setStyleSheet("""
                 QPushButton {
-                    background-color: #007BFF;     /* Modern blue */
+                    background-color: #63a1db;     /* Modern blue */
                     color: white;                  /* Text color */
                     border: none;
                     padding: 8px 16px;
