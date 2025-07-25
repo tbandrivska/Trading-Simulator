@@ -1,3 +1,4 @@
+import sqlite3
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QCheckBox, QPushButton, QLabel, QMessageBox, QDoubleSpinBox, QSpinBox, QHBoxLayout
 )
@@ -71,3 +72,5 @@ class TradingStrategiesWidget(QDialog):
         parent = self.parent()
         if hasattr(parent, "simWindow") and hasattr(parent.simWindow, "update_balances"):
             parent.simWindow.update_balances()
+            self.simulator.strategies.save_to_db(self.simulator.get_sim_id())
+    

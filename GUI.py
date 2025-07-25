@@ -317,7 +317,7 @@ class displayStock(QWidget):
         #implement trading strategies - trigger displayStrategies
         self.trading_strat_button = QPushButton("IMPLEMENT TRADING STRATEGIES")
         right_panel.addWidget(self.trading_strat_button)
-        #self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
+        self.trading_strat_button.clicked.connect(self.displayStrategiesFunc)
 
         #end trade
         self.end_trade_button = QPushButton("END TRADE")
