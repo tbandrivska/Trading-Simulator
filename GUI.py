@@ -4,18 +4,49 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
     QMessageBox, QFormLayout, QSizePolicy, QScrollArea
 )
-from PySide6.QtGui import QIntValidator
+from PySide6.QtCore import QTimer, Qt
+from PySide6.QtGui import QIntValidator, QFont
 import sqlite3
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from Stock import Stock
-from TradingSimulator import TradingSimulator
-from TradingStrategiesWidget import TradingStrategiesWidget
+# from TradingSimulator import TradingSimulator
+# from TradingStrategiesWidget import TradingStrategiesWidget
 
-class startWindow(QWidget):
+class loadingWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.simulator = TradingSimulator(10000)  #Initialise simulator with a default balance
+        self.resize(1200, 600)
+        self.setWindowTitle("Trading Simulator")
+
+        title_label = QLabel("TRADING SIMULATOR")
+        loading_label = QLabel("...LOADING...")
+        title_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
+        loading_label.setFont(QFont("Arial", 18))
+
+        #centre labels in window
+        loading_layout = QVBoxLayout()
+        loading_layout.addWidget(title_label)
+        loading_layout.addWidget(loading_label)
+        loading_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setLayout(loading_layout)
+
+        self.show()
+        QTimer.singleShot(100, self.importation)
+    
+    def importation(self):
+        from TradingSimulator import TradingSimulator
+        self.TradingSimulator = TradingSimulator(10000)
+        self.startWindow = startWindow(self.TradingSimulator)
+        self.startWindow.show()
+        self.close()
+        
+
+class startWindow(QWidget):
+    def __init__(self, tradingSimulator):
+        super().__init__()
+        #self.simulator = TradingSimulator(10000)  #Initialise simulator with a default balance
+        self.simulator = tradingSimulator
         self.resize(1200, 600)
         self.setWindowTitle("Start Menu")
 
@@ -600,6 +631,6 @@ if __name__ == "__main__":
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
-    window = startWindow()
+    window = loadingWindow()
     window.show()
     sys.exit(app.exec())
