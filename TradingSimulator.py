@@ -281,7 +281,7 @@ class TradingSimulator:
         """Reset stocks and balance to initial state"""
         for stock in self.stocks.values():
             stock.initialise_stock(date)
-        self.balance.resetBalance(self.start_balance)
+        self.balance.resetBalance()
     
 
     # 2.2 configuration - previous simulation

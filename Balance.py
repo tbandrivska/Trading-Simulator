@@ -79,9 +79,8 @@ class Balance:
             Stock.set_cash_invested(new_invested)
 
     #reset method resets the instance variables to their initial values
-    def resetBalance(self, start_balance:float):
-        self.startBalance = start_balance
-        self.currentBalance = start_balance
+    def resetBalance(self):
+        self.currentBalance = self.startBalance
         self.portfolioValue = 0.0
         self.totalInvestedBalance = 0.0
         self.portfolioPerformance = 0.0

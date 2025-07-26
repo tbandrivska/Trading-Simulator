@@ -6,14 +6,14 @@ class Stock:
         #static instance variables
         self.name = name 
         self.ticker = ticker
-        self.opening_stock_value = opening_value
-        self.opening_stock_performance = 0.0
+        self.opening_stock_value: float = opening_value
+        self.opening_stock_performance: float = 0.0
         
         #updated post-trade
         self.number_stocks = 0
         self.cash_invested = 0.0
         self.cash_withdrawn = 0.0
-        self.investment_value = 0.0 #post trade and. daily
+        self.investment_value = 0.0 #post trade upadates and daily upadates
         
         #updated daily
         self.current_stock_value = opening_value
@@ -28,6 +28,7 @@ class Stock:
             f"stock_performance={self.current_stock_performance:.2f}%, )"
             f"shares={self.number_stocks}, "
             f"cash_invested=£{self.cash_invested:.2f}, "
+            f"cash_withdrawn=£{self.cash_withdrawn:.2f}, "
             f"investment_value=£{self.investment_value:.2f}, "
             f"investment_performance={self.investment_performance:.2f}% "
             
@@ -87,14 +88,19 @@ class Stock:
         else:
             raise ValueError("Number of stocks cannot be negative.")
    
-    def initialise_stock(self, date) -> None:
+    def initialise_stock(self, date):
         """Reset the stock instance variables and set opening and current value."""
+        self.number_stocks = 0
         self.cash_invested = 0.0
+        self.cash_withdrawn = 0.0
+
         self.opening_stock_value = Stock.fetchOpeningValue(self.ticker, date)
         self.current_stock_value = self.opening_stock_value
         self.opening_stock_performance = Stock.fetchOpeningPerformance(self.ticker, date)
         self.current_stock_performance = self.opening_stock_performance
-        self.number_stocks = 0
+
+        self.update_investment_value()
+        self.update_investment_performance()
 
     def update_current_stock_performance(self):
         '''calculate current performance based on opening value and current value'''

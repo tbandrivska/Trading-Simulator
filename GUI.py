@@ -17,7 +17,7 @@ class loadingWindow(QWidget):
         super().__init__()
         self.resize(1200, 600)
         self.setWindowTitle("Trading Simulator")
-        self.start_balance = 10000
+        self.start_balance = 10000.00
 
         title_label = QLabel("TRADING SIMULATOR")
         title_label.setFont(QFont("Arial", 24, QFont.Weight.Bold))
@@ -110,14 +110,14 @@ class displaySimulation(QWidget):
             print(f"loading in simulation: {self.sim_id}")
             
         
-        self.resize(1200, 600)
+        self.resize(1800, 1000)
         self.setWindowTitle("SIMULATION ID: " + self.sim_id)
 
         #Total Balance and Cash Balance
         
         cash_balance = self.simulator.balance.getCurrentBalance()
-        invested_balance = self.simulator.balance.getTotalInvestedBalance()
-        total_balance = cash_balance + invested_balance
+        portfolio_value = self.simulator.balance.getPortfolioValue()
+        total_balance = cash_balance + portfolio_value
         self.total_balance_label = QLabel("TOTAL BALANCE: $" + str(round(total_balance,2)))
         self.cash_balance_label = QLabel("CASH BALANCE: $" + str(round(cash_balance,2)))
         balance_layout = QVBoxLayout()
@@ -180,7 +180,7 @@ class displaySimulation(QWidget):
         left_panel.addWidget(stock_info_widget)
 
         #Invested balance, portforlio performance
-        self.invested_label = QLabel("INVESTED BALANCE: $" + str(round(invested_balance,2)))
+        self.invested_label = QLabel("PORTFOLIO VALUE: $" + str(round(portfolio_value,2)))
         portfolio_performance = self.simulator.balance.getPortfolioPerformance()
         self.portfolio_performance_label = QLabel("PERFORMANCE: "+ str(round(portfolio_performance,1)) +"%")
         portfolio_layout = QVBoxLayout()
