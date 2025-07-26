@@ -300,17 +300,17 @@ class displayStock(QWidget):
         stock_details_grid = QGridLayout()
         #initial investment value
         self.invested_title_label = QLabel("CASH INVESTED")
-        self.invested_label = QLabel(str("£" + str(round(self.Stock.get_cash_invested(),2))))
+        self.invested_label = QLabel(str("$" + str(round(self.Stock.get_cash_invested(),2))))
         stock_details_grid.addWidget(self.invested_title_label,0,0)
         stock_details_grid.addWidget(self.invested_label,1,0)
         #current investment value
-        investment_value_title_label = QLabel("CURRENT INVESTMENT VALUE")
-        investment_value_label = QLabel("£" + str(round(self.Stock.get_investment_value(),2)))
+        investment_value_title_label = QLabel("VALUE OF INVESTMENT")
+        investment_value_label = QLabel("$" + str(round(self.Stock.get_investment_value(),2)))
         stock_details_grid.addWidget(investment_value_title_label,0,1)
         stock_details_grid.addWidget(investment_value_label,1,1)
         #investment performance
         performance_title_label = QLabel("INVESTMENT PERFORMANCE")
-        investment_performance = round(self.Stock.get_investment_performance(),1)
+        investment_performance = round(self.Stock.get_current_stock_performance(),1)
         performance_label = QLabel(str(investment_performance) + "%")
         stock_details_grid.addWidget(performance_title_label,0,2)
         stock_details_grid.addWidget(performance_label,1,2)
@@ -321,7 +321,7 @@ class displayStock(QWidget):
         stock_details_grid.addWidget(stock_performance_label,1,3)
         #Stock value
         stock_value_title_label = QLabel("STOCK VALUE")
-        stock_value_label = QLabel("£" + str(round(self.Stock.get_current_stock_value(),2)))
+        stock_value_label = QLabel("$" + str(round(self.Stock.get_current_stock_value(),2)))
         stock_details_grid.addWidget(stock_value_title_label,0,4)
         stock_details_grid.addWidget(stock_value_label,1,4)
 
@@ -332,7 +332,7 @@ class displayStock(QWidget):
 
         #status bar - cash balance, number of stocks
         status_bar = QVBoxLayout()
-        self.cash_balance_label = QLabel("CASH BALANCE: £" + str(round(self.simulator.balance.getCurrentBalance(),2)))
+        self.cash_balance_label = QLabel("CASH BALANCE: $" + str(round(self.simulator.balance.getCurrentBalance(),2)))
         self.num_stocks_label = QLabel("NUMBER OF STOCKS OWNED: " + str(self.Stock.get_number_stocks()))
         status_bar.addWidget(self.cash_balance_label)
         status_bar.addWidget(self.num_stocks_label)
@@ -468,8 +468,8 @@ class tradeWidget(QWidget):
         elif mode == "SELL":
             new_balance = cash_balance + total_price
         
-        self.price_outputs[mode].setText(f"£{total_price:,.2f}")
-        self.balance_outputs[mode].setText(f"£{new_balance:,.2f}")
+        self.price_outputs[mode].setText(f"${total_price:,.2f}")
+        self.balance_outputs[mode].setText(f"${new_balance:,.2f}")
 
     def click_tab_btn(self, index: int):
         self.stack.setCurrentIndex(index)

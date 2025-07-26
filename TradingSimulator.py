@@ -590,11 +590,12 @@ class TradingSimulator:
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
 
-        #find first entry where an investment is made 
+        #find first entry where simulation has been run 
+            #investment_performance only begins updating after simulation run and not during initial trade
         cursor.execute(f"""
             SELECT entry_number
             FROM {self.current_simulation_id}
-            WHERE portfolio_value > 0
+            WHERE investment_performance != 0
             ORDER BY entry_number ASC
             LIMIT 1
         """)

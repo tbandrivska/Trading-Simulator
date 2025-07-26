@@ -93,14 +93,13 @@ class Stock:
         self.number_stocks = 0
         self.cash_invested = 0.0
         self.cash_withdrawn = 0.0
+        self.investment_value = 0.0
+        self.investment_performance = 0.0
 
         self.opening_stock_value = Stock.fetchOpeningValue(self.ticker, date)
         self.current_stock_value = self.opening_stock_value
-        self.opening_stock_performance = Stock.fetchOpeningPerformance(self.ticker, date)
-        self.current_stock_performance = self.opening_stock_performance
-
-        self.update_investment_value()
-        self.update_investment_performance()
+        self.opening_stock_performance = Stock.fetchStockPerformance(self.ticker, 365, date)
+        self.current_stock_performance = self.opening_stock_performance   
 
     def update_current_stock_performance(self):
         '''calculate current performance based on opening value and current value'''
@@ -130,8 +129,8 @@ class Stock:
 
     def dailyStockUpdate(self, date) -> None:
         #update the current value and performance of the stock based on the date
-        self.set_current_value(Stock.fetchClosingValue(self.ticker, date))
-        self.update_current_stock_performance()
+        self.current_stock_value = Stock.fetchOpeningValue(self.ticker, date)
+        self.current_stock_performance = Stock.fetchStockPerformance(self.ticker, 30, date)
         self.update_investment_value()
         self.update_investment_performance()
 
@@ -163,7 +162,7 @@ class Stock:
         start_date, end_date = self.get_start_and_end_dates()
         self.opening_stock_value = self.fetchOpeningValue(self.ticker, start_date)
         self.current_stock_value = self.fetchClosingValue(self.ticker, end_date)
-        self.opening_stock_performance = Stock.fetchOpeningPerformance(self.ticker, start_date)
+        self.opening_stock_performance = Stock.fetchStockPerformance(self.ticker, 30, start_date)
 
 
     #static methods for fetching historical data from the database
@@ -210,23 +209,24 @@ class Stock:
 
         # Return the requested value based on openOrClose parameter
         return data[0] if openOrClose.lower() == "open" else data[1]
-    
+
     @staticmethod
-    def fetchOpeningPerformance(ticker: str, todays_date) -> float:
+    def fetchStockPerformance(ticker: str, timeframe: int, todays_date) -> float:
         """calculate the opening performance of the stock 
-        based on historical data within the the last year."""
+        based on historical data within the the last month."""
         
         
         #find date one year before the given date
         if isinstance(todays_date, str):
             todays_date = datetime.strptime(todays_date, "%Y-%m-%d").date()
-            startDate = todays_date - timedelta(days=365)
+            startDate = todays_date - timedelta(days=timeframe)
         elif isinstance(todays_date, datetime):
-            startDate = todays_date - timedelta(days=365)
+            startDate = todays_date - timedelta(days=timeframe)
         elif isinstance(todays_date, date):
-            startDate = todays_date - timedelta(days=365)
+            startDate = todays_date - timedelta(days=timeframe)
         else:
             raise TypeError("Date must be a string or datetime or date object.")
+        
         #if the start date is before the first date in the database, set it to the first date
         if not Stock.fetchDates(startDate, todays_date, ticker):
             startDate = Stock.get_start_and_end_dates()[0]
