@@ -8,6 +8,7 @@ from Balance import Balance
 from Database import Database
 import TradingStrategies as TradingStrategies
 from TradingStrategies import TradingStrategies
+import re
 
 class TradingSimulator:
     
@@ -604,8 +605,8 @@ class TradingSimulator:
         #if no investements have ever been made, return no data
         if results is None:
             return {
-            "days": [1,2,3,4,5,6],
-            "balances": [0,0,0,0,0,0]
+            "days": [0],
+            "balances": [0]
             }
         first_entry = int(results[0])
 
@@ -657,12 +658,13 @@ class TradingSimulator:
 
         ticker = Stock.get_ticker()
 
-        #find first entry where a stock is purchased
+       #find first entry where simulation has been run 
+            #investment_performance only begins updating after simulation run and not during initial trade
         cursor.execute(f"""
             SELECT entry_number
             FROM {self.current_simulation_id}
             WHERE ticker = ?
-            AND number_of_stocks > 0
+            AND investment_performance != 0
             ORDER BY entry_number ASC
             LIMIT 1
         """,(ticker,))
@@ -671,8 +673,8 @@ class TradingSimulator:
         #if this stock has never been purchased, return no data
         if results is None:
             data = {
-            "days": [1,2,3,4,5,6],
-            "balances": [0,0,0,0,0,0]
+            "days": [0],
+            "balances": [0]
             }
             return data
 
@@ -716,6 +718,85 @@ class TradingSimulator:
         return {"days": days, "balances": balances}
 
 
+    #admin methods
+    def rename_simulation(self, sim_id, new_name: str) -> bool:
+        """Rename a simulation table"""
+        # Allow only letters, digits, spaces, and underscores
+        new_name = new_name.strip() # Remove leading/trailing whitespace
+        # Check length and character validity
+        if len(new_name) > 30:
+            print("Simulation name must be 30 characters or less")
+            return False
+        if not re.fullmatch(r"[A-Za-z0-9_ ]{1,50}", new_name):
+            print("Invalid simulation name. Use only letters, numbers, spaces, or underscores.")
+            return False
+        new_name = new_name.replace('"', '""') # Escape embedded double quotes  
+
+        if not sim_id or not new_name:
+            raise ValueError("Simulation ID and new name cannot be empty")
+        
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        # Check if simulation exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (sim_id,))
+        if not cursor.fetchone():
+            print(f"Simulation {sim_id} does not exist")
+            return False
+        
+        # Rename the table
+        cursor.execute(f"ALTER TABLE \"{sim_id}\" RENAME TO \"{new_name}\"")
+        conn.commit()
+        conn.close()
+        
+        print(f"Simulation {sim_id} renamed to {new_name}")
+        return True
+
+    def delete_simulation(self, sim_id: str) -> bool:
+        """Delete a simulation by ID"""
+        if not sim_id:
+            raise ValueError("Simulation ID cannot be empty")
+        
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        # Check if simulation exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (sim_id,))
+        if not cursor.fetchone():
+            print(f"Simulation {sim_id} does not exist")
+            return False
+        
+        # Delete the table
+        cursor.execute(f"DROP TABLE \"{sim_id}\"")
+        conn.commit()
+        conn.close()
+        
+        print(f"Simulation {sim_id} deleted")
+        return True
+
+    def too_many_simulations(self) -> bool:
+        """Check if there are too many simulations in the database"""
+        sim_limit = 10  # Set your limit here
+
+        # Count the number of simulation tables in the database
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT COUNT(*) FROM sqlite_master 
+            WHERE type='table' 
+            AND name NOT IN ('historicalData', 'sqlite_sequence')
+        """)
+        count = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        if count >= sim_limit:
+            print("Too many simulations in the database. Please delete some.")
+            return True
+        return False
+    
+
     #test methods to run the simulation
     def testRun(self):
         """Run a test simulation with random parameters"""
@@ -725,15 +806,18 @@ class TradingSimulator:
         print("current balance = " + str(self.balance.getCurrentBalance()))
        
         # 2 cofiguration - new simulation
-        # self.new_simulation()
-        # self.set_timeframe(30)
-        # print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
+        if self.too_many_simulations():
+            print("Too many simulations in the database. Please delete some.")
+            return
+        self.new_simulation()
+        self.set_timeframe(30)
+        print("phase 2 complete: New simulation created with ID 'test_simulation' for 30 days.")
         # self.set_timeframe(365)
         # print("phase 2 complete: New simulation created with ID 'test_simulation' for 365 days.")
 
         # 2.5 configuration - load previous simulation
-        self.load_prev_simulation('sim_20250724_46828')
-        self.set_timeframe(1)
+        # self.load_prev_simulation('sim_20250724_46828')
+        # self.set_timeframe(1)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 30 days.")
         # self.set_timeframe(10000)
         # print("phase 2.5 complete: Previous simulation loaded and timeframe set to 10000 days.")

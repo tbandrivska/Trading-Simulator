@@ -1,8 +1,9 @@
 import sys
+import re
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
     QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
-    QMessageBox, QFormLayout, QSizePolicy, QScrollArea
+    QMessageBox, QFormLayout, QSizePolicy, QScrollArea, QInputDialog
 )
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QIntValidator, QFont
@@ -82,11 +83,16 @@ class startWindow(QWidget):
         self.exitButton.clicked.connect(QApplication.quit)
 
     def displaySimDetailsFunc(self, sim_id):
+        """Display the simulation details window."""
+        if self.simulator.too_many_simulations():
+            QMessageBox.warning(self, "Too Many Simulations", "You have too many simulations in the database. Please delete some before starting a new one.")
+            return
         self.display_sim_details_obj = displaySimulation(self, sim_id)
         self.display_sim_details_obj.show()
         self.hide()
 
     def displaySimsFunc(self):
+        """Display the previous simulations window."""
         display_sims_obj = displaySims(self)
         display_sims_obj.show()
         self.hide()
@@ -141,21 +147,24 @@ class displaySimulation(QWidget):
             stock_numbers = QFormLayout()
             stock_performance = round(Stock.get_current_stock_performance(),1)
             display_stock_performance = QLineEdit()
-            self.style_qlineEdit(display_stock_performance)
+            self.style_textEdit("grey", display_stock_performance)
             display_stock_performance.setReadOnly(True)
             display_stock_performance.setText(str(stock_performance) + "%")
             stock_numbers.addRow("PERFORMANCE:", display_stock_performance)
 
             stock_value = round(Stock.get_current_stock_value(),2)
             display_stock_value = QLineEdit()
-            self.style_qlineEdit(display_stock_value)
+            if stock_value <= cash_balance:
+                self.style_textEdit("green", display_stock_value)
+            else:
+                self.style_textEdit("red", display_stock_value)
             display_stock_value.setReadOnly(True)
             display_stock_value.setText("$" + str(stock_value))
             stock_numbers.addRow("VALUE:", display_stock_value)
 
             stocks_owned = Stock.get_number_stocks()
             display_stocks_owned = QLineEdit()
-            self.style_qlineEdit(display_stocks_owned)
+            self.style_textEdit("grey", display_stocks_owned)
             display_stocks_owned.setReadOnly(True)
             display_stocks_owned.setText(str(stocks_owned))
             stock_numbers.addRow("OWNED:", display_stocks_owned)
@@ -229,16 +238,39 @@ class displaySimulation(QWidget):
         self.end_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
 
     @staticmethod
-    def style_qlineEdit(qlineEdit):
-        qlineEdit.setStyleSheet("""
+    def style_textEdit(type: str, qlineEdit):
+        """Style the QLineEdit based on the type."""
+        if type == "green":
+            qlineEdit.setStyleSheet("""
             QLineEdit {
                 background-color: #1e1e1e;
-                color: #dcdcdc;
-                border: 1px solid #555;
+                color: #b6e3b6;  /* desaturated green text */
+                border: 1px solid #4c6b4c;
                 border-radius: 4px;
                 padding: 4px 8px;
             }
-        """)
+            """)
+        elif type == "red":
+            qlineEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #1e1e1e;
+                color: #e3b6b6;  /* desaturated red text */
+                border: 1px solid #6b4c4c;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            """)
+        else:
+            qlineEdit.setStyleSheet("""
+                QLineEdit {
+                    background-color: #1e1e1e;
+                    color: #dcdcdc;
+                    border: 1px solid #555;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                }
+            """)
+         
 
     def get_stock(self, index: int) -> Stock: 
         """Get stock object by index."""
@@ -253,6 +285,7 @@ class displaySimulation(QWidget):
         self.close()
 
     def run_sim(self):
+        """Run the simulation for a specified number of days."""
         days = self.get_days_input()
         if 0 < days < 10000:
             self.simulator.set_timeframe(days)
@@ -260,6 +293,7 @@ class displaySimulation(QWidget):
             self.reloadSimWindow()
 
     def get_days_input(self) -> int:
+        """Get the number of days input from the user."""
         text = self.days_input.text()
         if text.isdigit():
             days = int(text)
@@ -362,10 +396,12 @@ class displayStock(QWidget):
 
 
     def displayStrategiesFunc(self):
+        """Display the trading strategies widget."""
         self.strat_widget = TradingStrategiesWidget(self.simulator, self)
         self.strat_widget.show()
 
     def endTrade(self):
+        """End the trade and return to the simulation window."""
         start_window = self.simWindow.startWindow
         sim_id = self.simulator.get_sim_id()
         newSimWindow = displaySimulation(start_window, sim_id)
@@ -408,7 +444,7 @@ class tradeWidget(QWidget):
         self.setLayout(layout)
 
     def create_tab(self, mode):
-        #mode = PURCHASE or SELLL
+        """Create a tab for either PURCHASE or SELL mode."""
         widget = QWidget()
 
         lhs_layout = QVBoxLayout()
@@ -455,6 +491,7 @@ class tradeWidget(QWidget):
         return widget
 
     def update_labels(self, stock_input: str, mode):
+        """Update the price and balance labels based on the stock input."""
         if not stock_input.strip().isdigit():
             self.price_outputs[mode].clear()
             self.balance_outputs[mode].clear()
@@ -474,6 +511,7 @@ class tradeWidget(QWidget):
         self.balance_outputs[mode].setText(f"${new_balance:,.2f}")
 
     def click_tab_btn(self, index: int):
+        """Switch between PURCHASE and SELL tabs."""
         self.stack.setCurrentIndex(index)
         #change the style of buttons to indicate which tab is open
         if index == 0:
@@ -530,6 +568,7 @@ class tradeWidget(QWidget):
             """)
 
     def trade_stock(self, mode):
+        """Handle the stock trading logic for either PURCHASE or SELL."""
         text = self.stock_inputs[mode].text()
         if not text.strip().isdigit():
             print("Invalid input: please enter a number")
@@ -544,11 +583,14 @@ class tradeWidget(QWidget):
         confirmed = self.simulator.trade_a_stock(ticker, amount)
         if not confirmed:
             print("Trade unsuccesful: insufficient balance to purchase stocks.")
-            #open micro window: trade unsuccesful
+            #open small window to tell the user: trade unsuccesful
+            self.pop_up_message(self, "Trade Unsuccessful", "Insufficient balance to purchase stocks.")
+            return
+
         else:
             print("Trade succesful")
             #open micro window: trade succesful
-            #open and close stock window to update change
+            self.pop_up_message(self, "Trade Successful", f"Successfully traded {amount} stocks of {self.Stock.get_ticker()}.")
             self.reloadStockWindow()
 
     def reloadStockWindow(self):
@@ -561,6 +603,16 @@ class tradeWidget(QWidget):
         self.close()
         self.stockWindow.close()
 
+    @staticmethod
+    def pop_up_message(window, title:str, message: str):
+        """Display a popup message to the user."""
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.setWindowTitle(title)
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
+
 
 class displaySims(QWidget):
     def __init__(self, startWindow):
@@ -570,17 +622,36 @@ class displaySims(QWidget):
         self.setWindowTitle("Previous Simulations")
 
         vlayout = QVBoxLayout()
+        sim_layout = QGridLayout()
         #loop through all the simulations and display their names
         self.sim_IDS = self.get_sim_IDS()
+        i = 0
         for sim_id in self.sim_IDS:
+            sim_num_label = QLabel(f"{i+1}")
+            sim_num_label.setFixedSize(20,40)
+            sim_layout.addWidget(sim_num_label,i,0)
+
             prev_sim_button = QPushButton(sim_id)
             prev_sim_button.setFixedSize(200, 40)
             prev_sim_button.clicked.connect(lambda checked=False, id=sim_id: self.displayPrevSimFunc(id))
-            vlayout.addWidget(prev_sim_button)
+            sim_layout.addWidget(prev_sim_button,i,1)
+
+            edit_name_button = QPushButton("EDIT NAME")
+            edit_name_button.setFixedSize(100, 40)
+            edit_name_button.clicked.connect(lambda checked=False, id=sim_id: self.editSimNameFunc(id))
+            sim_layout.addWidget(edit_name_button,i,2)
+
+            delete_sim = QPushButton("DELETE SIM")
+            delete_sim.setFixedSize(100, 40)
+            delete_sim.clicked.connect(lambda checked=False, id=sim_id: self.delete_simulation(id))
+            sim_layout.addWidget(delete_sim, i,3)
+
+            i += 1
+        vlayout.addLayout(sim_layout)
 
         #back button
         back_button = QPushButton("GO BACK")
-        back_button.setFixedSize(200, 40)
+        back_button.setFixedSize(440, 40)
         back_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
         vlayout.addWidget(back_button)
 
@@ -622,8 +693,42 @@ class displaySims(QWidget):
         conn.close()
         return sim_names
     
+    def editSimNameFunc(self, sim_id):
+        """Edit the selected simulation name."""
+        new_name, ok = QInputDialog.getText(self, "Edit Simulation Name", "Enter new name for the simulation:")
+        if not re.fullmatch(r"[A-Za-z0-9_]+", new_name):
+            QMessageBox.warning(self, "Invalid Name", "Simulation name can only contain letters, digits, and underscores. No spaces or special characters allowed.")
+            return
+        success = self.startWindow.simulator.rename_simulation(sim_id, new_name)
+        if ok and success:
+            QMessageBox.information(self, "Success", "Simulation name updated successfully.")
+            #reload the displaySims window to reflect changes
+            self.reloadDisplaySims()
+        else:
+            QMessageBox.warning(self, "Name already exists", "Please enter a different name for the simulation.")
+
+    def delete_simulation(self, sim_id):
+        """Delete the selected simulation."""
+        reply = QMessageBox.question(self, "Delete Simulation", f"Are you sure you want to delete simulation {sim_id}?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            success = self.startWindow.simulator.delete_simulation(sim_id)
+            if success:
+                QMessageBox.information(self, "Success", "Simulation deleted successfully.")
+                #reload the displaySims window to reflect changes
+                self.reloadDisplaySims()
+            else:
+                QMessageBox.warning(self, "Error", "Failed to delete simulation. Please try again.")
+
     def displayPrevSimFunc(self, sim_id):
+        """Display the selected previous simulation."""
         self.startWindow.displaySimDetailsFunc(sim_id)
+        self.close()
+
+    def reloadDisplaySims(self):
+        """Reload the displaySims window to reflect changes."""
+        new_window = displaySims(self.startWindow)
+        new_window.show()
         self.close()
 
 
@@ -661,15 +766,22 @@ class graphWidget(QWidget):
 
         # Set graph style
         style.use("seaborn-v0_8-darkgrid")
-        style.use("dark_background")
+        #style.use("dark_background")
+
+        # If no data is available, clear the graph and set titles
+        if day_data == [0] and balance_data == [0]:
+            self.ax.clear()
+            self.ax.set_title(self.type + " PERFORMANCE")
+            self.ax.set_xlabel("DAY")
+            self.ax.set_ylabel(balance_type)
+            self.canvas.draw()
+            return
 
         self.ax.clear()  # Clear previous plots
         self.ax.plot(day_data, balance_data, marker='.', linestyle='-', color="#1f77b4", linewidth=2, markersize=4)
         self.ax.set_ylim(bottom=0) #makes it so the y axis can only start at 0
-        # self.ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))#Make x axis increment by integers
-        # self.ax.xaxis.set_major_formatter(mticker.FormatStrFormatter('%d')) #prevents any decimals in the x axis
         self.ax.set_title(self.type + " PERFORMANCE", fontsize=14, fontweight='bold')
-        self.ax.set_xlabel("Day", fontsize=12)
+        self.ax.set_xlabel("DAY", fontsize=12)
         self.ax.set_ylabel(balance_type, fontsize=12)
         self.ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
 
