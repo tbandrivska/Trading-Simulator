@@ -141,21 +141,24 @@ class displaySimulation(QWidget):
             stock_numbers = QFormLayout()
             stock_performance = round(Stock.get_current_stock_performance(),1)
             display_stock_performance = QLineEdit()
-            self.style_qlineEdit(display_stock_performance)
+            self.style_textEdit("grey", display_stock_performance)
             display_stock_performance.setReadOnly(True)
             display_stock_performance.setText(str(stock_performance) + "%")
             stock_numbers.addRow("PERFORMANCE:", display_stock_performance)
 
             stock_value = round(Stock.get_current_stock_value(),2)
             display_stock_value = QLineEdit()
-            self.style_qlineEdit(display_stock_value)
+            if stock_value <= cash_balance:
+                self.style_textEdit("green", display_stock_value)
+            else:
+                self.style_textEdit("red", display_stock_value)
             display_stock_value.setReadOnly(True)
             display_stock_value.setText("$" + str(stock_value))
             stock_numbers.addRow("VALUE:", display_stock_value)
 
             stocks_owned = Stock.get_number_stocks()
             display_stocks_owned = QLineEdit()
-            self.style_qlineEdit(display_stocks_owned)
+            self.style_textEdit("grey", display_stocks_owned)
             display_stocks_owned.setReadOnly(True)
             display_stocks_owned.setText(str(stocks_owned))
             stock_numbers.addRow("OWNED:", display_stocks_owned)
@@ -229,16 +232,38 @@ class displaySimulation(QWidget):
         self.end_button.clicked.connect(lambda: self.startWindow.backToStartWindow(self))
 
     @staticmethod
-    def style_qlineEdit(qlineEdit):
-        qlineEdit.setStyleSheet("""
+    def style_textEdit(type: str, qlineEdit):
+        if type == "green":
+            qlineEdit.setStyleSheet("""
             QLineEdit {
                 background-color: #1e1e1e;
-                color: #dcdcdc;
-                border: 1px solid #555;
+                color: #b6e3b6;  /* desaturated green text */
+                border: 1px solid #4c6b4c;
                 border-radius: 4px;
                 padding: 4px 8px;
             }
-        """)
+            """)
+        elif type == "red":
+            qlineEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #1e1e1e;
+                color: #e3b6b6;  /* desaturated red text */
+                border: 1px solid #6b4c4c;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            """)
+        else:
+            qlineEdit.setStyleSheet("""
+                QLineEdit {
+                    background-color: #1e1e1e;
+                    color: #dcdcdc;
+                    border: 1px solid #555;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                }
+            """)
+         
 
     def get_stock(self, index: int) -> Stock: 
         """Get stock object by index."""
@@ -661,15 +686,22 @@ class graphWidget(QWidget):
 
         # Set graph style
         style.use("seaborn-v0_8-darkgrid")
-        style.use("dark_background")
+        #style.use("dark_background")
+
+        # If no data is available, clear the graph and set titles
+        if day_data == [0] and balance_data == [0]:
+            self.ax.clear()
+            self.ax.set_title(self.type + " PERFORMANCE")
+            self.ax.set_xlabel("DAY")
+            self.ax.set_ylabel(balance_type)
+            self.canvas.draw()
+            return
 
         self.ax.clear()  # Clear previous plots
         self.ax.plot(day_data, balance_data, marker='.', linestyle='-', color="#1f77b4", linewidth=2, markersize=4)
         self.ax.set_ylim(bottom=0) #makes it so the y axis can only start at 0
-        # self.ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))#Make x axis increment by integers
-        # self.ax.xaxis.set_major_formatter(mticker.FormatStrFormatter('%d')) #prevents any decimals in the x axis
         self.ax.set_title(self.type + " PERFORMANCE", fontsize=14, fontweight='bold')
-        self.ax.set_xlabel("Day", fontsize=12)
+        self.ax.set_xlabel("DAY", fontsize=12)
         self.ax.set_ylabel(balance_type, fontsize=12)
         self.ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
 

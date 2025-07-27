@@ -604,8 +604,8 @@ class TradingSimulator:
         #if no investements have ever been made, return no data
         if results is None:
             return {
-            "days": [1,2,3,4,5,6],
-            "balances": [0,0,0,0,0,0]
+            "days": [0],
+            "balances": [0]
             }
         first_entry = int(results[0])
 
@@ -657,12 +657,13 @@ class TradingSimulator:
 
         ticker = Stock.get_ticker()
 
-        #find first entry where a stock is purchased
+       #find first entry where simulation has been run 
+            #investment_performance only begins updating after simulation run and not during initial trade
         cursor.execute(f"""
             SELECT entry_number
             FROM {self.current_simulation_id}
             WHERE ticker = ?
-            AND number_of_stocks > 0
+            AND investment_performance != 0
             ORDER BY entry_number ASC
             LIMIT 1
         """,(ticker,))
@@ -671,8 +672,8 @@ class TradingSimulator:
         #if this stock has never been purchased, return no data
         if results is None:
             data = {
-            "days": [1,2,3,4,5,6],
-            "balances": [0,0,0,0,0,0]
+            "days": [0],
+            "balances": [0]
             }
             return data
 
