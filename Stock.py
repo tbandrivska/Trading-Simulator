@@ -102,13 +102,12 @@ class Stock:
         self.current_stock_performance = self.opening_stock_performance   
 
     def update_current_stock_performance(self):
-        '''calculate current performance based on opening value and current value'''
         opening = self.get_opening_stock_value()
         current = self.get_current_stock_value()
         if opening == 0:
             performance = 0.0
-        performance = ((current - opening) / opening) * 100
-
+        else:
+            performance = ((current - opening) / opening) * 100
         self.current_stock_performance = performance
 
     def update_investment_value(self):
