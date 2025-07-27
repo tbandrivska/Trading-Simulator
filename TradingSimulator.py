@@ -316,41 +316,40 @@ class TradingSimulator:
 
 
     # 2.3 configuration - timeframe
+  
     def set_timeframe(self, days: int) -> None:
-        """Set simulation date range from start date"""
-        self.current_timeframe_in_days = days
+        """Set simulation date range from start date for the given number of days."""
         if not self.start_date:
             raise ValueError("Start date not set")
-        
-        print(f"self.start_date = {self.start_date}, type = {type(self.start_date)}")
-        # Convert start_date string to datetime object
+
+        # convert start_date to date object
         if isinstance(self.start_date, str):
-            self.end_date = datetime.strptime(self.start_date, "%Y-%m-%d").date() + timedelta(days=days)
+            start_dt = datetime.strptime(self.start_date, "%Y-%m-%d").date()
         elif isinstance(self.start_date, datetime):
-            self.end_date = self.start_date.date() + timedelta(days=days)  # Strip time part if needed
+            start_dt = self.start_date.date()
         elif isinstance(self.start_date, date):
-            self.end_date = self.start_date + timedelta(days=days)
+            start_dt = self.start_date
         else:
             raise TypeError("self.start_date must be a string, datetime, or date")
 
-        #convert start date and end date to strings
-        if isinstance(self.start_date, date):
-            self.start_date = self.start_date.strftime("%Y-%m-%d")
-        if isinstance(self.end_date, date):
-            self.end_date = self.end_date.strftime("%Y-%m-%d")
-
+        end_dt = start_dt + timedelta(days=days)
+        self.start_date = start_dt.strftime("%Y-%m-%d")
+        self.end_date = end_dt.strftime("%Y-%m-%d")
+        self.current_timeframe_in_days = days
         self.days_left_in_simulation = days
-        self.validDates = self._validate_dates(self.start_date, self.end_date)
 
+        # validate dates
+        self.validDates = self._validate_dates(self.start_date, self.end_date)
         if self.validDates:
             print(f"Simulation timeframe set: {self.start_date} to {self.end_date}")
         else:
             print(f"timeframe exceeds available dates as end date is {self.end_date} - time loop initiated")
         
-    def _validate_dates(self, start_date, end_date) -> int:
-        """Check if dates exist in database"""
+    def _validate_dates(self, start_date, end_date) -> bool:
+        """Check if start date exists and end date is within available data."""
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
+        # Check start date exists
         cursor.execute("""
             SELECT EXISTS(
                 SELECT 1 FROM historicalData 
@@ -359,6 +358,8 @@ class TradingSimulator:
             )
         """, (start_date,))
         start_exists = bool(cursor.fetchone()[0])
+
+        # Check end date exists
         cursor.execute("""
             SELECT EXISTS(
                 SELECT 1 FROM historicalData 
@@ -368,8 +369,16 @@ class TradingSimulator:
         """, (end_date,))
         end_exists = bool(cursor.fetchone()[0])
 
+        if not end_exists:
+            # Accept if there is any date >= end_date
+            cursor.execute("""
+                SELECT MIN(date) FROM historicalData WHERE date >= ?
+            """, (end_date,))
+            next_date = cursor.fetchone()[0]
+            end_exists = next_date is not None
+
         conn.close()
-        return start_exists and end_exists  
+        return start_exists and end_exists
 
 
     # 3 simulation setup (purchase stocks and set strategies)
@@ -829,7 +838,11 @@ class TradingSimulator:
         # 4 simulation Execution
         self.run_simulation()
         print("phase 4 complete: Simulation executed.")
-        self.load_prev_simulation('sim_20250724_46828')
+        #self.load_prev_simulation('sim_20250724_46828')
+        self.new_simulation()
+        self.set_timeframe(30)  # or any number of days you want
+        self.run_simulation()
+        print("Simulation ID:", self.current_simulation_id)
         self.set_timeframe(1)
 
         # # 5 simulation termination
