@@ -1,12 +1,15 @@
 import sqlite3
+import Stock
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QCheckBox, QPushButton, QLabel, QMessageBox, QDoubleSpinBox, QSpinBox, QHBoxLayout
 )
 
 class TradingStrategiesWidget(QDialog):
-    def __init__(self, simulator, parent=None):
+    def __init__(self, simulator, stock, parent=None):
         super().__init__(parent)
         self.simulator = simulator
+        self.stock = stock
+        self.ticker = stock.get_ticker()
         self.setMinimumSize(300, 200)
         self.resize(400, 300)
         self.setWindowTitle("Select Trading Strategies")
@@ -16,7 +19,16 @@ class TradingStrategiesWidget(QDialog):
 
         self.layout.addWidget(QLabel("Select strategies to activate and set parameters:"))
 
-        for name, config in self.simulator.strategies.strategies.items():
+        # Get strategies for this stock, or use defaults if not set yet
+        stock_strats = self.simulator.strategies.stock_strategies.get(self.ticker, {})
+        default_strats = {
+            'take_profit': {'description': 'Take Profit', 'threshold': 0.2, 'active': False},
+            'stop_loss': {'description': 'Stop Loss', 'threshold': 0.1, 'active': False},
+            'dollar_cost_avg': {'description': 'Dollar Cost Avg', 'shares': 5, 'interval': 7, 'active': False}
+        }
+        for name, config in default_strats.items():
+            # Use stock-specific config if it exists
+            config = {**config, **stock_strats.get(name, {})}
             row = QHBoxLayout()
             desc = config.get('description', name)
             cb = QCheckBox(desc)
@@ -64,10 +76,10 @@ class TradingStrategiesWidget(QDialog):
             for param, widget in self.param_widgets[name].items():
                 params[param] = widget.value()
             if cb.isChecked():
-                self.simulator.strategies.activate(name, **params)
+                self.simulator.strategies.activate(self.ticker, name, **params)
             else:
-                self.simulator.strategies.deactivate(name)
-        QMessageBox.information(self, "Saved", "Strategies updated!")
+                self.simulator.strategies.deactivate(self.ticker, name)
+        QMessageBox.information(self, "Saved", "Strategies updated for this stock!")
         self.accept()
         parent = self.parent()
         if hasattr(parent, "simWindow") and hasattr(parent.simWindow, "update_balances"):

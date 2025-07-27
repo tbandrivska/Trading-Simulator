@@ -397,8 +397,8 @@ class displayStock(QWidget):
 
     def displayStrategiesFunc(self):
         """Display the trading strategies widget."""
-        self.strat_widget = TradingStrategiesWidget(self.simulator, self)
-        self.strat_widget.show()
+        self.strat_widget = TradingStrategiesWidget(self.simulator, self.Stock, self)
+        self.strat_widget.exec()
 
     def endTrade(self):
         """End the trade and return to the simulation window."""
