@@ -8,7 +8,9 @@ from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QIntValidator, QFont
 import sqlite3
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib import style
 from matplotlib.figure import Figure
+import matplotlib.ticker as mticker
 from Stock import Stock
 from TradingStrategiesWidget import TradingStrategiesWidget
 
@@ -657,12 +659,20 @@ class graphWidget(QWidget):
         day_data = data["days"]
         balance_data = data["balances"]
 
+        # Set graph style
+        style.use("seaborn-v0_8-darkgrid")
+        style.use("dark_background")
+
         self.ax.clear()  # Clear previous plots
-        self.ax.plot(day_data, balance_data, marker='.')
-        self.ax.set_title(self.type + " PERFORMANCE")
-        self.ax.set_xlabel("Day")
-        self.ax.set_ylabel(balance_type)
-        self.ax.grid(True)
+        self.ax.plot(day_data, balance_data, marker='.', linestyle='-', color="#1f77b4", linewidth=2, markersize=4)
+        self.ax.set_ylim(bottom=0) #makes it so the y axis can only start at 0
+        # self.ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))#Make x axis increment by integers
+        # self.ax.xaxis.set_major_formatter(mticker.FormatStrFormatter('%d')) #prevents any decimals in the x axis
+        self.ax.set_title(self.type + " PERFORMANCE", fontsize=14, fontweight='bold')
+        self.ax.set_xlabel("Day", fontsize=12)
+        self.ax.set_ylabel(balance_type, fontsize=12)
+        self.ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+
         self.canvas.draw()
         
 

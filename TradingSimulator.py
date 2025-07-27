@@ -604,8 +604,8 @@ class TradingSimulator:
         #if no investements have ever been made, return no data
         if results is None:
             return {
-            "days": [0],
-            "balances": [0]
+            "days": [1,2,3,4,5,6],
+            "balances": [0,0,0,0,0,0]
             }
         first_entry = int(results[0])
 
@@ -671,8 +671,8 @@ class TradingSimulator:
         #if this stock has never been purchased, return no data
         if results is None:
             data = {
-            "days": [0],
-            "balances": [0]
+            "days": [1,2,3,4,5,6],
+            "balances": [0,0,0,0,0,0]
             }
             return data
 
