@@ -1,4 +1,4 @@
-from typing import Dict
+
 from Stock import Stock
 from Balance import Balance
 

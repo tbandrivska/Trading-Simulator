@@ -1,5 +1,4 @@
-import sqlite3
-import Stock
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QCheckBox, QPushButton, QLabel, QMessageBox, QDoubleSpinBox, QSpinBox, QHBoxLayout
 )

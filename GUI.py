@@ -11,7 +11,6 @@ import sqlite3
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib import style
 from matplotlib.figure import Figure
-import matplotlib.ticker as mticker
 from Stock import Stock
 from TradingStrategiesWidget import TradingStrategiesWidget
 
