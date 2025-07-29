@@ -123,8 +123,7 @@ class TradingSimulator:
         self.create_stocks()
 
         self.current_simulation_id = None
-        self.active_strategies: Dict[str, dict] = {} 
-        self.performance_history = []
+      
 
         self.current_timeframe_in_days = 0
         self.days_left_in_simulation = 0

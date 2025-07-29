@@ -3,7 +3,7 @@ import re
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout,
     QHBoxLayout, QGridLayout, QStackedLayout, QFormLayout, QLineEdit,
-    QMessageBox, QFormLayout, QSizePolicy, QScrollArea, QInputDialog
+    QMessageBox, QSizePolicy, QScrollArea, QInputDialog
 )
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QIntValidator, QFont
