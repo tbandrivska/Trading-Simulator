@@ -25,7 +25,8 @@ A desktop application for simulating stock trading, portfolio management, and te
 
 2. **Install dependencies:**
     ```bash
-    pip install -r requirements.txt
+    pip install PySide6
+    pip install matplotlib
     ```
     *Typical requirements:*
     - PySide6
