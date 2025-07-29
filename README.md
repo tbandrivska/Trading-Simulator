@@ -19,7 +19,7 @@ A desktop application for simulating stock trading, portfolio management, and te
 
 1. **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/tbandrivska/Trading-Simulator
     cd Trading-Simulator
     ```
 
@@ -69,7 +69,7 @@ Trading-Simulator/
 ├── __pycache__
 
 ---
-
+```
 ## Custom Trading Strategies
 
 - **Take Profit:** Sell when stock price increases by a set threshold.
