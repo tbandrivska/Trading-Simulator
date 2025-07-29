@@ -2,17 +2,18 @@ import sqlite3
 from datetime import datetime, timedelta, date
 
 class Stock:
-    def __init__(self, name: str, ticker: str, opening_value: float, opening_performance: float = 0.0):
+    def __init__(self, name: str, ticker: str, opening_value: float, opening_performance: float):
         #static instance variables
         self.name = name 
         self.ticker = ticker
         self.opening_stock_value: float = opening_value
-        self.opening_stock_performance: float = 0.0
+        self.opening_stock_performance: float = opening_performance
         
         #updated post-trade
         self.number_stocks = 0
-        self.cash_invested = 0.0
-        self.cash_withdrawn = 0.0
+        self.cash_invested = 0.0 #all cash ever paid into stock
+        self.cash_withdrawn = 0.0 #all cash ever taken out of stock
+        self.cash_profit = self.cash_withdrawn - self.cash_invested #cash made in excess of what is invested into stock
         self.investment_value = 0.0 #post trade upadates and daily upadates
         
         #updated daily
@@ -23,15 +24,14 @@ class Stock:
         
     def __str__(self):
         return (
-            f"Stock(name={self.name}, "
-            f"current_stock_value=£{self.current_stock_value:.2f}, "
-            f"stock_performance={self.current_stock_performance:.2f}%, )"
-            f"shares={self.number_stocks}, "
-            f"cash_invested=£{self.cash_invested:.2f}, "
-            f"cash_withdrawn=£{self.cash_withdrawn:.2f}, "
-            f"investment_value=£{self.investment_value:.2f}, "
-            f"investment_performance={self.investment_performance:.2f}% "
-            
+            f"Stock(name = {self.name}, "
+            f"current_stock_value = £{self.current_stock_value:.2f}, "
+            f"stock_performance = {self.current_stock_performance:.2f}%, "
+            f"shares = {self.number_stocks}, "
+            f"cash_invested = £{self.cash_invested:.2f}, "
+            f"cash_withdrawn = £{self.cash_withdrawn:.2f}, "
+            f"investment_value = £{self.investment_value:.2f}, "
+            f"investment_performance = {self.investment_performance:.2f}% "            
         )
 
 
@@ -50,6 +50,8 @@ class Stock:
         return self.cash_invested
     def get_cash_withdrawn(self) -> float:
         return self.cash_withdrawn
+    def get_cash_profit(self) -> float:
+        return self.cash_profit
     def get_current_stock_value(self) -> float:                         
         return self.current_stock_value
     def get_current_stock_performance(self) -> float:
@@ -93,13 +95,17 @@ class Stock:
         self.number_stocks = 0
         self.cash_invested = 0.0
         self.cash_withdrawn = 0.0
+        self.cash_profit = 0.0
         self.investment_value = 0.0
         self.investment_performance = 0.0
 
-        self.opening_stock_value = Stock.fetchOpeningValue(self.ticker, date)
+        self.opening_stock_value = self.fetchOpeningValue(self.ticker, date)
         self.current_stock_value = self.opening_stock_value
-        self.opening_stock_performance = Stock.fetchStockPerformance(self.ticker, 365, date)
+        self.opening_stock_performance = self.fetchStockPerformance(self.ticker, 30, date)
         self.current_stock_performance = self.opening_stock_performance   
+
+    def update_cash_profit(self):
+        self.cash_profit = self.cash_withdrawn - self.cash_invested
 
     def update_current_stock_performance(self):
         opening = self.get_opening_stock_value()
@@ -116,8 +122,7 @@ class Stock:
 
     def update_investment_performance(self):
         """Calculate the performance of the investment using cash invested/withdrawn and investment value."""
-        cash_profit = self.cash_withdrawn - self.cash_invested
-        overall_profit = self.investment_value + cash_profit
+        overall_profit = self.investment_value + self.cash_profit
 
         if self.cash_invested == 0:
             performance = 0.0
@@ -130,6 +135,7 @@ class Stock:
         #update the current value and performance of the stock based on the date
         self.current_stock_value = Stock.fetchOpeningValue(self.ticker, date)
         self.current_stock_performance = Stock.fetchStockPerformance(self.ticker, 30, date)
+        self.update_cash_profit()
         self.update_investment_value()
         self.update_investment_performance()
 
@@ -152,19 +158,20 @@ class Stock:
         # Set instance variables
         self.cash_invested = data[0]
         self.cash_withdrawn = data[1]
+        self.update_cash_profit()
         self.investment_value = data[2]
         self.investment_performance = data[3]
         self.current_stock_performance = data[4]
         self.number_stocks = data[5]
 
         # Set value-based fields
-        start_date, end_date = self.get_start_and_end_dates()
+        start_date, end_date = self.get_sim_start_and_end_dates(simulation_id)
         self.opening_stock_value = self.fetchOpeningValue(self.ticker, start_date)
-        self.current_stock_value = self.fetchClosingValue(self.ticker, end_date)
-        self.opening_stock_performance = Stock.fetchStockPerformance(self.ticker, 30, start_date)
+        self.current_stock_value = self.fetchOpeningValue(self.ticker, end_date)
+        self.opening_stock_performance = self.fetchStockPerformance(self.ticker, 30, start_date)
 
 
-    #static methods for fetching historical data from the database
+    #static methods for fetching historical data (and sim data) from the database
     @staticmethod
     def fetchDates(startDate, endDate, ticker: str) -> list[str]:
         """Get all available dates for a stock (for simulation time range)."""
@@ -228,7 +235,7 @@ class Stock:
         
         #if the start date is before the first date in the database, set it to the first date
         if not Stock.fetchDates(startDate, todays_date, ticker):
-            startDate = Stock.get_start_and_end_dates()[0]
+            startDate = Stock.get_historical_start_and_end_dates()[0]
         
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
@@ -287,7 +294,7 @@ class Stock:
         return data[0]
 
     @staticmethod
-    def get_start_and_end_dates() -> tuple[str, str]:
+    def get_historical_start_and_end_dates() -> tuple[str, str]:
         """Fetch the start and end dates from the historical data ."""
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
@@ -303,3 +310,29 @@ class Stock:
             raise ValueError(f"No valid dates found in historical data")
         
         return dates[0], dates[1]
+
+    @staticmethod
+    def get_sim_start_and_end_dates(simulation_id) -> tuple[str,str]:
+        """Fetch the start and end dates from simulation data"""
+        with sqlite3.connect("data.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                SELECT date
+                FROM {simulation_id}
+                WHERE entry_number = (SELECT MIN(entry_number) FROM {simulation_id})
+            """)
+            start_date = cursor.fetchone()[0]
+        
+        with sqlite3.connect("data.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                SELECT date
+                FROM {simulation_id}
+                WHERE entry_number = (SELECT MAX(entry_number) FROM {simulation_id})
+            """)
+            end_date = cursor.fetchone()[0]
+
+        return (start_date, end_date)
+
+        
+        

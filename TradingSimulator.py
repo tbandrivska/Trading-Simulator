@@ -13,8 +13,6 @@ import re
 class TradingSimulator:
     
     #methods that are up for discussion
-
-
     def get_user_strategy_choice(self):
             """
             Allow user to select a trading strategy from available options.
@@ -137,13 +135,14 @@ class TradingSimulator:
         """Create Stock objects for all tickers in database"""
         for ticker in self.database.getTickers():
             # Get opening price from simulation start date
-            opening_price = Stock.fetchOpeningValue(ticker, self.start_date)
+            value = Stock.fetchOpeningValue(ticker, self.start_date)
+            performance = Stock.fetchStockPerformance(ticker, 30, self.start_date)
             self.stocks[ticker] = Stock(
                 name = self.database.getStockName(ticker),
                 ticker = ticker,
-                opening_value = opening_price
+                opening_value = value,
+                opening_performance = performance
             )
-
             print("Stock created:" + self.stocks[ticker].get_name())
 
 
@@ -172,8 +171,8 @@ class TradingSimulator:
         self.current_simulation_id = simulation_id
         self.create_simulation_table()  # Must be called before run!
         self.randomiseStartDate()
-        self.record_portfolio(self.start_date)
         self.reset_all(self.start_date)
+        self.record_portfolio(self.start_date)
 
     def generate_simulation_id(self) -> str:
         """Generate a unique simulation ID"""
@@ -206,6 +205,7 @@ class TradingSimulator:
                 date TEXT,
                 current_balance REAL,
                 total_invested_balance REAL,
+                total_cash_profit REAL,
                 portfolio_value REAL,
                 portfolio_performance REAL,
                 ticker TEXT,
@@ -235,13 +235,14 @@ class TradingSimulator:
         cursor = conn.cursor()
         cursor.execute(f"""
             INSERT INTO "{self.current_simulation_id}" 
-            (date, current_balance, total_invested_balance, portfolio_value, portfolio_performance, ticker, cash_invested,
+            (date, current_balance, total_invested_balance, total_cash_profit, portfolio_value, portfolio_performance, ticker, cash_invested,
             cash_withdrawn, investment_value, investment_performance, current_stock_performance, number_of_stocks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,(
                 date,
                 self.balance.getCurrentBalance(),
                 self.balance.getTotalInvestedBalance(),
+                self.balance.getTotalCashProfit(),
                 self.balance.getPortfolioValue(),
                 self.balance.getPortfolioPerformance(),
                 stock.get_ticker(),
@@ -306,7 +307,8 @@ class TradingSimulator:
         self.start_date = self.get_next_day(last_date)
 
         #set balance
-        self.balance.set_balance_from_sim(sim_id)
+        list_of_stocks = self.stocks.values()
+        self.balance.set_balance_from_sim(sim_id, list_of_stocks)
         
         #loop through stocks and set their values based on the simulation ID
         for Stock in self.stocks.values():
@@ -316,7 +318,6 @@ class TradingSimulator:
 
 
     # 2.3 configuration - timeframe
-  
     def set_timeframe(self, days: int) -> None:
         """Set simulation date range from start date for the given number of days."""
         if not self.start_date:
@@ -478,12 +479,13 @@ class TradingSimulator:
         rows = cursor.fetchall()
         conn.close()
 
+        list_of_stocks = self.stocks.values()
         dates = [row[0] for row in rows]
         for date in dates:  # each loop = daily cycle
             for stock in self.stocks.values():
                 stock.dailyStockUpdate(date)
                 self.strategies.apply(stock, dates.index(date))
-                self.balance.daily_balance_update(self.current_simulation_id) #type: ignore 
+                self.balance.daily_balance_update(self.current_simulation_id, list_of_stocks) #type: ignore
                 self.record_transaction(stock, date)
         if not self.validDates:
             self.start_date = self.get_loop_restart_date()                           

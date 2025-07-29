@@ -346,8 +346,7 @@ class displayStock(QWidget):
         stock_details_grid.addWidget(investment_value_label,1,1)
         #investment performance
         performance_title_label = QLabel("INVESTMENT PERFORMANCE")
-        investment_performance = round(self.Stock.get_current_stock_performance(),1)
-        performance_label = QLabel(str(investment_performance) + "%")
+        performance_label = QLabel(str(round(self.Stock.get_investment_performance(),1)) + "%")
         stock_details_grid.addWidget(performance_title_label,0,2)
         stock_details_grid.addWidget(performance_label,1,2)
         #Stock performance 
@@ -521,6 +520,51 @@ class tradeWidget(QWidget):
         self.active_button_style(active, self.purchase_tab_btn)
         self.active_button_style((not active), self.sell_tab_btn)
 
+    def trade_stock(self, mode):
+        """Handle the stock trading logic for either PURCHASE or SELL."""
+        text = self.stock_inputs[mode].text()
+        if not text.strip().isdigit():
+            print("Invalid input: please enter a number")
+            #open micro window: Invalid input
+            return
+
+        amount = int(text)
+        if mode == "SELL":
+            amount = -amount
+
+        ticker = self.Stock.get_ticker()
+        confirmed = self.simulator.trade_a_stock(ticker, amount)
+        if not confirmed:
+            print("Trade unsuccesful")
+            #open small window to tell the user: trade unsuccesful
+            self.pop_up_message(self, "Trade Unsuccessful", "Insufficient balance to purchase stocks.")
+            return
+        else:
+            print("Trade succesful")
+            #open micro window: trade succesful
+            self.pop_up_message(self, "Trade Successful", f"Successfully traded {amount} stocks of {self.Stock.get_ticker()}.")
+            self.reloadStockWindow()
+
+    def reloadStockWindow(self):
+        """reload window so that it dispalys changes in data"""
+        sim_window = self.stockWindow.simWindow
+        simulator = self.stockWindow.simulator
+        stock = self.Stock
+        self.new_stock_window = displayStock(sim_window, simulator, stock)
+        self.new_stock_window.show()
+        self.close()
+        self.stockWindow.close()
+
+    @staticmethod
+    def pop_up_message(window, title:str, message: str):
+        """Display a popup message to the user."""
+        msg_box = QMessageBox()
+        msg_box.setText(message)
+        msg_box.setWindowTitle(title)
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.exec()
+
     @staticmethod
     def active_button_style(active_or_innactive: bool, button):
         """
@@ -566,52 +610,6 @@ class tradeWidget(QWidget):
                     background-color: #aaaaaa;     /* Darker still when pressed */
                 }
             """)
-
-    def trade_stock(self, mode):
-        """Handle the stock trading logic for either PURCHASE or SELL."""
-        text = self.stock_inputs[mode].text()
-        if not text.strip().isdigit():
-            print("Invalid input: please enter a number")
-            #open micro window: Invalid input
-            return
-
-        amount = int(text)
-        if mode == "SELL":
-            amount = -amount
-
-        ticker = self.Stock.get_ticker()
-        confirmed = self.simulator.trade_a_stock(ticker, amount)
-        if not confirmed:
-            print("Trade unsuccesful: insufficient balance to purchase stocks.")
-            #open small window to tell the user: trade unsuccesful
-            self.pop_up_message(self, "Trade Unsuccessful", "Insufficient balance to purchase stocks.")
-            return
-
-        else:
-            print("Trade succesful")
-            #open micro window: trade succesful
-            self.pop_up_message(self, "Trade Successful", f"Successfully traded {amount} stocks of {self.Stock.get_ticker()}.")
-            self.reloadStockWindow()
-
-    def reloadStockWindow(self):
-        """reload window so that it dispalys changes in data"""
-        sim_window = self.stockWindow.simWindow
-        simulator = self.stockWindow.simulator
-        stock = self.Stock
-        self.new_stock_window = displayStock(sim_window, simulator, stock)
-        self.new_stock_window.show()
-        self.close()
-        self.stockWindow.close()
-
-    @staticmethod
-    def pop_up_message(window, title:str, message: str):
-        """Display a popup message to the user."""
-        msg_box = QMessageBox()
-        msg_box.setText(message)
-        msg_box.setWindowTitle(title)
-        msg_box.setIcon(QMessageBox.Icon.Warning)
-        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        msg_box.exec()
 
 
 class displaySims(QWidget):
@@ -670,7 +668,6 @@ class displaySims(QWidget):
         final_layout = QVBoxLayout()
         final_layout.addWidget(scroll_area)
         self.setLayout(final_layout)
-
 
     def get_sim_IDS(self):
         """Fetch simulation IDs from the database."""
